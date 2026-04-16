@@ -1,0 +1,1202 @@
+/* ============================================================
+   VenueFlow — Attendee App Styles
+   ============================================================ */
+
+.attendee-view {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-md);
+  padding-bottom: 80px;
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Match Header --- */
+.match-header {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.match-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-blue);
+}
+
+.match-header__venue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.match-header__venue-name {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.match-header__live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-red);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.match-header__teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+
+.match-header__team {
+  text-align: center;
+  flex: 1;
+}
+
+.match-header__team-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin: 0 auto var(--space-sm);
+  border: 2px solid var(--color-border);
+}
+
+.match-header__team-logo--home {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.3);
+}
+
+.match-header__team-logo--away {
+  background: rgba(255, 184, 0, 0.1);
+  border-color: rgba(255, 184, 0, 0.3);
+}
+
+.match-header__team-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.match-header__score {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.match-header__score-num {
+  font-family: var(--font-heading);
+  font-size: var(--text-4xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  width: 48px;
+  text-align: center;
+  line-height: 1;
+}
+
+.match-header__score-dash {
+  font-size: var(--text-2xl);
+  color: var(--color-text-muted);
+  font-weight: 300;
+}
+
+.match-header__minute {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-accent-blue);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.match-header__weather {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* --- Section Headers --- */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.section-header__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.section-header__action {
+  font-size: var(--text-xs);
+  color: var(--color-accent-blue);
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+}
+
+.section-header__action:hover {
+  opacity: 0.8;
+}
+
+/* --- Venue Map --- */
+.venue-map-container {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--space-md);
+  position: relative;
+  background: var(--color-bg-secondary);
+}
+
+.venue-map-canvas {
+  width: 100%;
+  height: 280px;
+  display: block;
+  cursor: pointer;
+}
+
+.venue-map__info {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+}
+
+.venue-map__seat {
+  color: var(--color-accent-blue);
+  font-weight: 600;
+}
+
+.venue-map__capacity {
+  color: var(--color-text-muted);
+}
+
+/* --- Wait Time Cards --- */
+.wait-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.wait-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.wait-card:hover {
+  border-color: var(--color-border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.wait-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+.wait-card--green::before { background: var(--color-green); }
+.wait-card--yellow::before { background: var(--color-yellow); }
+.wait-card--orange::before { background: var(--color-orange); }
+.wait-card--red::before { background: var(--color-red); }
+
+.wait-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.wait-card__icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.wait-card__trend {
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.wait-card__trend--up { color: var(--color-red); }
+.wait-card__trend--down { color: var(--color-green); }
+.wait-card__trend--stable { color: var(--color-text-muted); }
+
+.wait-card__name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wait-card__zone {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.wait-card__time {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wait-card__time--green { color: var(--color-green); }
+.wait-card__time--yellow { color: var(--color-yellow); }
+.wait-card__time--orange { color: var(--color-orange); }
+.wait-card__time--red { color: var(--color-red); }
+
+.wait-card__unit {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+/* --- Smart Suggestion --- */
+.smart-suggestion {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(168, 85, 247, 0.05));
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.smart-suggestion__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-blue-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.smart-suggestion__text {
+  flex: 1;
+}
+
+.smart-suggestion__title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-accent-blue);
+  margin-bottom: 2px;
+}
+
+.smart-suggestion__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+/* --- Navigation Route --- */
+.route-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.route-card:hover {
+  border-color: var(--color-border-hover);
+  transform: translateX(4px);
+}
+
+.route-card__icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.route-card__info {
+  flex: 1;
+}
+
+.route-card__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.route-card__details {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  display: flex;
+  gap: var(--space-md);
+  margin-top: 2px;
+}
+
+.route-card__time {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--color-accent-blue);
+  flex-shrink: 0;
+}
+
+.route-card__time-unit {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+/* --- Food Menu --- */
+.food-tabs {
+  display: flex;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.food-tab {
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+}
+
+.food-tab:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+
+.food-tab--active {
+  background: var(--gradient-blue);
+  border-color: transparent;
+  color: white;
+}
+
+.food-item {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  transition: all var(--transition-base);
+}
+
+.food-item:hover {
+  border-color: var(--color-border-hover);
+}
+
+.food-item__icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.food-item__info {
+  flex: 1;
+}
+
+.food-item__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.food-item__stand {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.food-item__right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.food-item__price {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.food-item__prep {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.food-item__btn {
+  margin-top: 4px;
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--gradient-blue);
+  color: white;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+}
+
+.food-item__btn:hover {
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.food-item__btn:active {
+  transform: scale(0.95);
+}
+
+/* --- Orders --- */
+.order-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  animation: fadeInUp var(--transition-slow) ease both;
+}
+
+.order-card__icon {
+  font-size: 24px;
+}
+
+.order-card__info {
+  flex: 1;
+}
+
+.order-card__name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.order-card__id {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.order-card__status {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.order-card__status--preparing {
+  background: var(--color-accent-amber-dim);
+  color: var(--color-accent-amber);
+}
+
+.order-card__status--ready {
+  background: var(--color-green-dim);
+  color: var(--color-green);
+  animation: countPulse 1s ease infinite;
+}
+
+.order-card__status--picked_up {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+}
+
+/* --- Notifications --- */
+.notif-list {
+  margin-bottom: var(--space-md);
+}
+
+.notif-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  transition: all var(--transition-base);
+  animation: slideInRight var(--transition-slow) ease both;
+}
+
+.notif-card--event {
+  border-left: 3px solid var(--color-accent-blue);
+}
+
+.notif-card--suggestion {
+  border-left: 3px solid var(--color-accent-amber);
+}
+
+.notif-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.notif-card__title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.notif-card__time {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.notif-card__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+/* --- Bottom Nav --- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: rgba(10, 14, 26, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-around;
+  padding: var(--space-sm) 0;
+  z-index: 100;
+}
+
+.bottom-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+}
+
+.bottom-nav__item:hover {
+  color: var(--color-text-secondary);
+}
+
+.bottom-nav__item--active {
+  color: var(--color-accent-blue);
+}
+
+.bottom-nav__icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* --- Tab Content --- */
+.tab-content {
+  display: none;
+}
+
+.tab-content--active {
+  display: block;
+  animation: fadeIn var(--transition-base) ease both;
+}
+
+/* ============================================================
+   Click-and-Collect — Pickup Banner & Order Timeline
+   ============================================================ */
+
+.pickup-banner {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  animation: fadeInUp var(--transition-slow) ease both;
+  position: relative;
+}
+
+.pickup-banner__pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-green);
+  flex-shrink: 0;
+  animation: livePulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+}
+
+.pickup-banner__content {
+  flex: 1;
+}
+
+.pickup-banner__title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-green);
+}
+
+.pickup-banner__desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.pickup-banner__dismiss {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+
+/* Order Timeline */
+.order-timeline {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  animation: fadeInUp var(--transition-slow) ease both;
+}
+
+.order-timeline--ready {
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.1);
+}
+
+.order-timeline__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.order-timeline__item-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.order-timeline__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.order-timeline__id {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.order-timeline__status {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.order-timeline__status--confirmed { background: var(--color-accent-blue-dim); color: var(--color-accent-blue); }
+.order-timeline__status--preparing { background: var(--color-accent-amber-dim); color: var(--color-accent-amber); }
+.order-timeline__status--ready { background: var(--color-green-dim); color: var(--color-green); animation: countPulse 1.2s ease infinite; }
+.order-timeline__status--picked_up { background: var(--color-bg-elevated); color: var(--color-text-muted); }
+
+.order-timeline__steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: var(--space-md);
+}
+
+.timeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.timeline-step__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-bg-elevated);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all var(--transition-base);
+}
+
+.timeline-step--done .timeline-step__dot {
+  background: var(--color-accent-blue-dim);
+  border-color: var(--color-accent-blue);
+  color: var(--color-accent-blue);
+}
+
+.timeline-step--current .timeline-step__dot {
+  background: var(--gradient-blue);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+}
+
+.timeline-step__label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.timeline-step--done .timeline-step__label {
+  color: var(--color-accent-blue);
+}
+
+.timeline-step__line {
+  flex: 1;
+  height: 2px;
+  background: var(--color-border);
+  min-width: 20px;
+  margin-bottom: 18px;
+  transition: background var(--transition-base);
+}
+
+.timeline-step__line--done {
+  background: var(--color-accent-blue);
+}
+
+.order-timeline__pickup {
+  background: var(--color-green-dim);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--color-green);
+  line-height: 1.4;
+}
+
+/* Food wait indicator */
+.food-item__wait-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.food-item__wait-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.food-item__wait-dot--green { background: var(--color-green); }
+.food-item__wait-dot--yellow { background: var(--color-yellow); }
+.food-item__wait-dot--red { background: var(--color-red); }
+
+/* ============================================================
+   Virtual Bathroom Queue
+   ============================================================ */
+
+.restroom-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.restroom-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.restroom-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+
+.restroom-card--green::before { background: var(--color-green); }
+.restroom-card--yellow::before { background: var(--color-yellow); }
+.restroom-card--orange::before { background: var(--color-orange); }
+.restroom-card--red::before { background: var(--color-red); }
+
+.restroom-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.restroom-card__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.restroom-card__sensor-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-green);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.restroom-card__sensor-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-green);
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+.restroom-card__zone {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.restroom-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+  text-align: center;
+  margin-bottom: var(--space-sm);
+}
+
+.restroom-card__metric-value {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.restroom-card__metric-value--green { color: var(--color-green); }
+.restroom-card__metric-value--yellow { color: var(--color-yellow); }
+.restroom-card__metric-value--orange { color: var(--color-orange); }
+.restroom-card__metric-value--red { color: var(--color-red); }
+
+.restroom-card__metric-label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* Stall dots visualization */
+.restroom-card__stalls {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.stall-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  transition: background var(--transition-fast);
+}
+
+.stall-dot--free {
+  background: var(--color-green);
+  opacity: 0.8;
+}
+
+.stall-dot--occupied {
+  background: var(--color-red);
+  opacity: 0.6;
+}
+
+/* Queue Position Card */
+.queue-position-card {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(0, 212, 255, 0.02));
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  animation: fadeInUp var(--transition-slow) ease both;
+}
+
+.queue-position-card--turn {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(34, 197, 94, 0.04));
+  border-color: rgba(34, 197, 94, 0.4);
+  animation: countPulse 2s ease infinite;
+}
+
+.queue-position-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.queue-position-card__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.queue-position-card__location {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.queue-position-card__pos {
+  margin-left: auto;
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-accent-blue);
+}
+
+.queue-position-card__pos--turn {
+  color: var(--color-green);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-sm);
+}
+
+.queue-position-card__wait {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-sm);
+}
+
+/* ============================================================
+   Express Lane Reservations
+   ============================================================ */
+
+.express-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-sm);
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.express-card:hover {
+  border-color: var(--color-border-hover);
+}
+
+.express-card--expanded {
+  border-color: var(--color-accent-purple);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.1);
+}
+
+.express-card__header {
+  padding: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  cursor: pointer;
+}
+
+.express-card__icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.express-card__info {
+  flex: 1;
+}
+
+.express-card__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.express-card__location {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.express-card__arrow {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  transition: transform var(--transition-fast);
+}
+
+.express-card__slots {
+  padding: 0 var(--space-md) var(--space-md);
+  animation: fadeIn var(--transition-base) ease both;
+}
+
+.express-card__slots-title {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
+  font-weight: 600;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-xs);
+}
+
+.slot-btn {
+  padding: var(--space-sm) var(--space-xs);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+
+.slot-btn:hover:not(:disabled) {
+  border-color: var(--color-accent-purple);
+  background: var(--color-accent-purple-dim);
+}
+
+.slot-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.slot-btn--low {
+  border-color: var(--color-accent-amber-dim);
+}
+
+.slot-btn--full {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.slot-btn--booked {
+  background: var(--color-green-dim) !important;
+  border-color: var(--color-green) !important;
+  color: var(--color-green) !important;
+}
+
+.slot-btn__time {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.slot-btn__spots {
+  font-size: 9px;
+  color: var(--color-text-muted);
+}
+
+/* Reservation Card */
+.reservation-card {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(168, 85, 247, 0.02));
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  animation: fadeInUp var(--transition-slow) ease both;
+}
+
+.reservation-card__info {
+  flex: 1;
+}
+
+.reservation-card__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.reservation-card__details {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Notification type colors */
+.notif-card--order { border-left: 3px solid var(--color-green); }
+.notif-card--queue { border-left: 3px solid var(--color-accent-purple); }
+.notif-card--reservation { border-left: 3px solid var(--color-accent-purple); }
