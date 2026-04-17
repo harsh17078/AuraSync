@@ -17,59 +17,26 @@
 <body>
 
   <!-- ===== Top Bar ===== -->
-  <header id="app-header" style="
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    background: rgba(10, 14, 26, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--color-border);
-    padding: var(--space-sm) var(--space-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-lg);
-  ">
+  <header id="app-header" class="app-header">
     <!-- Logo -->
-    <div style="
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      position: absolute;
-      left: var(--space-lg);
-    ">
-      <span style="font-size: 24px;">⚡</span>
-      <span style="
-        font-family: var(--font-heading);
-        font-weight: 800;
-        font-size: var(--text-lg);
-        background: var(--gradient-blue);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        letter-spacing: -0.02em;
-      ">VenueFlow</span>
+    <div class="app-header__logo">
+      <span style="font-size:24px">⚡</span>
+      <span class="app-header__brand">VenueFlow</span>
+      <span class="app-header__sync">● APP SYNC ACTIVE</span>
     </div>
 
     <!-- View Switcher -->
     <div class="view-switcher" id="view-switcher">
       <button class="view-switcher__btn view-switcher__btn--active" data-view="attendee">
-        📱 Attendee App
+        🧭 NAVIGATION
       </button>
       <button class="view-switcher__btn" data-view="dashboard">
-        📊 Operations Dashboard
+        📊 OPS DASHBOARD
       </button>
     </div>
 
     <!-- Right side: API status + Settings -->
-    <div style="
-      position: absolute;
-      right: var(--space-lg);
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-    ">
+    <div class="app-header__right">
       <span id="api-status-indicator">
         <span class="badge badge--yellow">🔄 Simulated</span>
       </span>

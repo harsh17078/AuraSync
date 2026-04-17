@@ -997,6 +997,188 @@ const VenueData = (() => {
     updateInterval = null;
   }
 
+  // =====================================================
+  //  NEW: Smart Decision Engine
+  // =====================================================
+
+  function getSmartDecisions() {
+    const bestEntry = zones.filter(z => z.type === 'gate').sort((a, b) => a.occupancy - b.occupancy)[0];
+    const bestExit = zones.filter(z => z.type === 'gate').sort((a, b) => a.occupancy - b.occupancy)[0];
+    const bestFood = concessions.filter(c => c.type === 'food').sort((a, b) => a.waitTime - b.waitTime)[0];
+    const bestDrink = concessions.filter(c => c.type === 'drink').sort((a, b) => a.waitTime - b.waitTime)[0];
+
+    const entryRouteInfo = findFastestRoute('user-seat', bestEntry.id);
+    const exitRouteInfo = findFastestRoute('user-seat', bestExit.id);
+
+    return {
+      bestEntry: {
+        label: 'Best Entry',
+        name: bestEntry.name,
+        icon: '🚪',
+        detail: `Recommended · Lowest crowd load${entryRouteInfo ? `, saves ${entryRouteInfo.totalWalkMin} min` : ''}`,
+        color: 'green',
+      },
+      bestExit: {
+        label: 'Best Exit',
+        name: bestExit.name,
+        icon: '🚶',
+        detail: `Clearest egress route away from density surge`,
+        color: 'blue',
+      },
+      bestFood: {
+        label: 'Best Food',
+        name: bestFood ? bestFood.name : 'N/A',
+        icon: bestFood ? bestFood.icon : '🍔',
+        detail: `Shortest wait time (${bestFood ? bestFood.waitTime : '?'}m)`,
+        color: 'amber',
+      },
+      bestTransport: {
+        label: 'Best Transport',
+        name: transportOptions[0].name,
+        icon: transportOptions[0].icon,
+        detail: `${transportOptions[0].frequency} · ${transportOptions[0].waitTime} min wait`,
+        color: 'purple',
+      },
+      precisionRoute: {
+        label: 'Precision Route',
+        name: 'Start Navigation',
+        icon: '🧭',
+        detail: 'Custom point-to-point routing with turn-by-turn',
+        color: 'cyan',
+      },
+    };
+  }
+
+  // =====================================================
+  //  NEW: Transport Options
+  // =====================================================
+
+  const transportOptions = [
+    { id: 'taxi-1', name: 'Taxi (North Gate)', type: 'taxi', icon: '🚕', waitTime: 5, frequency: 'Frequent service', distance: '200m', gate: 'Gate A' },
+    { id: 'bus-1', name: 'Bus (Route 42)', type: 'bus', icon: '🚌', waitTime: 8, frequency: 'Every 10 min', distance: '350m', gate: 'Gate C' },
+    { id: 'metro-1', name: 'Metro (Central)', type: 'metro', icon: '🚇', waitTime: 3, frequency: 'Every 5 min', distance: '500m', gate: 'Gate B' },
+    { id: 'ride-1', name: 'Rideshare Pickup', type: 'rideshare', icon: '🚗', waitTime: 7, frequency: 'On demand', distance: '150m', gate: 'Gate D' },
+  ];
+
+  // =====================================================
+  //  NEW: Broadcast / Announcements
+  // =====================================================
+
+  const broadcasts = [
+    { id: 'bc-1', text: '🎉 LOUD CHEERS! Rodriguez marks his goal. Next 5 mins will be highly active!', type: 'crowd', time: Date.now() },
+    { id: 'bc-2', text: '🚻 North Restroom A reopened — reduced wait times expected', type: 'info', time: Date.now() - 60000 },
+    { id: 'bc-3', text: '🍔 Burger Barn running 2-for-1 special this half!', type: 'promo', time: Date.now() - 120000 },
+  ];
+
+  function addBroadcast(text, type) {
+    broadcasts.unshift({ id: `bc-${Date.now()}`, text, type, time: Date.now() });
+    if (broadcasts.length > 10) broadcasts.pop();
+  }
+
+  // =====================================================
+  //  NEW: Captain Mode (AI Chat)
+  // =====================================================
+
+  const captainChatHistory = [
+    { role: 'captain', text: 'Process is more important than the result. I have analyzed the stadium matrix. What\'s your next move?', time: Date.now() - 30000 },
+  ];
+
+  const captainResponses = {
+    'food': () => {
+      const best = concessions.filter(c => c.type === 'food').sort((a, b) => a.waitTime - b.waitTime)[0];
+      return `🍔 Best food option: ${best.name} with only ${best.waitTime} min wait at ${best.zone.replace(/-/g, ' ')}. Routing you there now.`;
+    },
+    'restroom': () => {
+      const best = restrooms.sort((a, b) => a.waitTime - b.waitTime)[0];
+      return `🚻 Nearest restroom: ${best.name} with ${best.waitTime} min wait. ${best.totalStalls - best.occupiedStalls} stalls free.`;
+    },
+    'exit': () => {
+      const best = zones.filter(z => z.type === 'gate').sort((a, b) => a.occupancy - b.occupancy)[0];
+      return `🚪 Clearest exit: ${best.name} at ${Math.round(best.occupancy * 100)}% capacity. Route optimized for minimal crowd contact.`;
+    },
+    'friend': () => {
+      const ar = getAROverlayData();
+      const closest = ar.friends.sort((a, b) => a.distance - b.distance)[0];
+      return `📍 ${closest.emoji} ${closest.name} is ${closest.distance}m away at ${closest.section}, ${closest.seat}. Status: ${closest.status}.`;
+    },
+    'route': () => `🧭 Confirmed. Routing you to the nearest exit. Directions will update on the map.`,
+    'default': () => {
+      const tips = [
+        `📊 Current venue load: ${Math.round(match.attendance / match.capacity * 100)}%. Concourses are ${zones.find(z => z.id === 'north-concourse').occupancy > 0.5 ? 'busy' : 'clear'}.`,
+        `⏱️ Average wait time across all food stands: ${Math.round(concessions.filter(c => c.type === 'food').reduce((s, c) => s + c.waitTime, 0) / concessions.filter(c => c.type === 'food').length)} min.`,
+        `🎫 Your exit wave is Wave 1 — Priority. Depart at the final whistle via ${userExitAssignment.gate}.`,
+      ];
+      return tips[Math.floor(Math.random() * tips.length)];
+    },
+  };
+
+  function sendCaptainMessage(userMsg) {
+    captainChatHistory.push({ role: 'user', text: userMsg, time: Date.now() });
+    const lower = userMsg.toLowerCase();
+    let response;
+    if (lower.includes('food') || lower.includes('eat') || lower.includes('hungry')) response = captainResponses.food();
+    else if (lower.includes('restroom') || lower.includes('toilet') || lower.includes('washroom') || lower.includes('bathroom')) response = captainResponses.restroom();
+    else if (lower.includes('exit') || lower.includes('leave') || lower.includes('gate') || lower.includes('entry')) response = captainResponses.exit();
+    else if (lower.includes('friend') || lower.includes('squad') || lower.includes('find')) response = captainResponses.friend();
+    else if (lower.includes('route') || lower.includes('navigate') || lower.includes('direction')) response = captainResponses.route();
+    else response = captainResponses.default();
+
+    setTimeout(() => {
+      captainChatHistory.push({ role: 'captain', text: response, time: Date.now() });
+      emit();
+    }, 600);
+
+    return response;
+  }
+
+  // =====================================================
+  //  NEW: Squad Radar (extended friend tracking)
+  // =====================================================
+
+  const squadMembers = [
+    { id: 'sq-1', name: 'Rahul M.', avatar: 'R', location: 'Stand C Concourse', distance: 120, status: 'moving', emoji: '🏃', section: 'Section 108', gate: 'Gate B' },
+    { id: 'sq-2', name: 'Priya K.', avatar: 'P', location: 'Gate 2 Entrance', distance: 45, status: 'stationary', emoji: '🧍', section: 'Section 112', gate: 'Gate A' },
+    { id: 'sq-3', name: 'Sam W.', avatar: 'S', location: 'East Food Court', distance: 85, status: 'moving', emoji: '🚶', section: 'Section 106', gate: 'Gate B' },
+    { id: 'sq-4', name: 'Jordan L.', avatar: 'J', location: 'South Concourse', distance: 140, status: 'stationary', emoji: '🧘', section: 'Section 120', gate: 'Gate C' },
+  ];
+
+  function updateSquadPositions() {
+    squadMembers.forEach(m => {
+      m.distance = Math.max(5, m.distance + Math.floor(Math.random() * 21) - 10);
+      if (Math.random() < 0.15) m.status = m.status === 'moving' ? 'stationary' : 'moving';
+    });
+  }
+
+  // =====================================================
+  //  NEW: Match Momentum
+  // =====================================================
+
+  let matchMomentum = { value: 83, trend: '+4', period: 'last over' };
+
+  function updateMatchMomentum() {
+    matchMomentum.value = Math.max(20, Math.min(99, matchMomentum.value + Math.floor(Math.random() * 9) - 4));
+    const diff = Math.floor(Math.random() * 7) - 3;
+    matchMomentum.trend = diff >= 0 ? `+${diff}` : `${diff}`;
+  }
+
+  // =====================================================
+  //  NEW: Quick Actions
+  // =====================================================
+
+  const quickActions = [
+    { id: 'qa-food', label: 'Find Food', icon: '🍔', color: 'green', action: 'food' },
+    { id: 'qa-entry', label: 'Clear Entry', icon: '🚪', color: 'blue', action: 'entry' },
+    { id: 'qa-emergency', label: 'Emergency Exit', icon: '🚨', color: 'red', action: 'emergency' },
+    { id: 'qa-home', label: 'Return Home', icon: '🏠', color: 'purple', action: 'home' },
+  ];
+
+  // Update tick to include new features
+  const origTick = tick;
+
+  // Extend the existing tick
+  const _originalStart = start;
+
+  // Patch getSnapshot to include new data
   function getSnapshot() {
     return {
       match: { ...match, events: [...match.events] },
@@ -1029,6 +1211,20 @@ const VenueData = (() => {
       userExitAssignment: { ...userExitAssignment },
       gateThroughput: JSON.parse(JSON.stringify(gateThroughput)),
       geoFences: geoFences.map(g => ({ ...g, center: { ...g.center } })),
+      // NEW: Smart Decision Engine
+      smartDecisions: getSmartDecisions(),
+      // NEW: Transport
+      transportOptions: transportOptions.map(t => ({ ...t })),
+      // NEW: Broadcasts
+      broadcasts: broadcasts.map(b => ({ ...b })),
+      // NEW: Captain Chat
+      captainChat: captainChatHistory.map(c => ({ ...c })),
+      // NEW: Squad Radar
+      squadMembers: squadMembers.map(s => ({ ...s })),
+      // NEW: Match Momentum
+      matchMomentum: { ...matchMomentum },
+      // NEW: Quick Actions
+      quickActions: [...quickActions],
     };
   }
 
@@ -1122,7 +1318,6 @@ const VenueData = (() => {
     if (!apiCrowd) return;
     dataSources.crowd = 'api';
 
-    // Update zone occupancies from API
     if (apiCrowd.zones) {
       apiCrowd.zones.forEach(apiZone => {
         const zone = zones.find(z => z.id === apiZone.id);
@@ -1133,7 +1328,6 @@ const VenueData = (() => {
       });
     }
 
-    // Update concession wait times from API
     if (apiCrowd.concessions) {
       apiCrowd.concessions.forEach(apiC => {
         const c = concessions.find(x => x.id === apiC.id);
@@ -1144,7 +1338,6 @@ const VenueData = (() => {
       });
     }
 
-    // Update restroom wait times from API
     if (apiCrowd.restrooms) {
       apiCrowd.restrooms.forEach(apiR => {
         const r = restrooms.find(x => x.id === apiR.id);
@@ -1185,5 +1378,12 @@ const VenueData = (() => {
     leaveConcessionQueue,
     // Feature 3: AR Overlays
     getAROverlayData,
+    // NEW
+    sendCaptainMessage,
+    getSmartDecisions,
+    updateSquadPositions,
+    updateMatchMomentum,
+    addBroadcast,
   };
 })();
+
