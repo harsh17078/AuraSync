@@ -51,6 +51,9 @@ const AttendeeView = (() => {
         <div id="att-tab-ticket" class="tab-content">
           <div id="att-ticket-content">${renderTicketTab(data)}</div>
         </div>
+        <div id="att-tab-services" class="tab-content">
+          <div id="att-services-content">${renderServicesTab(data)}</div>
+        </div>
         <div id="att-tab-alerts" class="tab-content">
           <div id="att-alerts-content">${renderAlertsTab(data)}</div>
         </div>
@@ -66,8 +69,11 @@ const AttendeeView = (() => {
           <button class="bottom-nav__item" data-tab="food">
             <span class="bottom-nav__icon">🍔</span>Order
           </button>
+          <button class="bottom-nav__item" data-tab="services">
+            <span class="bottom-nav__icon">🚻</span>Services
+          </button>
           <button class="bottom-nav__item" data-tab="ar">
-            <span class="bottom-nav__icon">📡</span>AR View
+            <span class="bottom-nav__icon">📡</span>AR
           </button>
           <button class="bottom-nav__item" data-tab="ticket">
             <span class="bottom-nav__icon">🎫</span>Ticket
@@ -169,12 +175,19 @@ const AttendeeView = (() => {
         return;
       }
 
-      // Wayfinding destination selection
+      // Wayfinding destination selection (toggle)
       const destBtn = e.target.closest('[data-wayfind-dest]');
       if (destBtn) {
         e.preventDefault();
-        selectedWayfindingDest = destBtn.dataset.wayfindDest;
-        activeRoute = VenueData.findFastestRoute('user-seat', selectedWayfindingDest);
+        const destId = destBtn.dataset.wayfindDest;
+        if (selectedWayfindingDest === destId) {
+          // Deselect
+          selectedWayfindingDest = null;
+          activeRoute = null;
+        } else {
+          selectedWayfindingDest = destId;
+          activeRoute = VenueData.findFastestRoute('user-seat', selectedWayfindingDest);
+        }
         refreshNavigate();
         return;
       }
@@ -1159,6 +1172,8 @@ const AttendeeView = (() => {
     }
   }
 
+  let navAnimFrame = null;
+
   function switchTab(tab) {
     currentTab = tab;
     container.querySelectorAll('.bottom-nav__item').forEach(btn => {
@@ -1168,19 +1183,46 @@ const AttendeeView = (() => {
       el.classList.toggle('tab-content--active', el.id === `att-tab-${tab}`);
     });
 
-    // Cancel AR animation if leaving AR tab
+    // Cancel animations when leaving tabs
     if (tab !== 'ar' && arAnimFrame) {
       cancelAnimationFrame(arAnimFrame);
       arAnimFrame = null;
     }
+    if (tab !== 'navigate' && navAnimFrame) {
+      cancelAnimationFrame(navAnimFrame);
+      navAnimFrame = null;
+    }
 
-    if (tab === 'navigate') setTimeout(() => renderNavigateCanvases(VenueData.getSnapshot()), 100);
+    if (tab === 'navigate') {
+      setTimeout(() => renderNavigateCanvases(VenueData.getSnapshot()), 100);
+      startNavRouteAnimation();
+    }
     if (tab === 'services') refreshServices();
     if (tab === 'ar') startARAnimation();
     if (tab === 'ticket') {
       const el = document.getElementById('att-ticket-content');
       if (el) el.innerHTML = renderTicketTab(VenueData.getSnapshot());
     }
+  }
+
+  // Smooth route animation loop for Navigate tab
+  function startNavRouteAnimation() {
+    if (navAnimFrame) cancelAnimationFrame(navAnimFrame);
+    function animateNav() {
+      if (currentTab !== 'navigate') return;
+      if (activeRoute) {
+        const wayfindCanvas = document.getElementById('att-wayfinding-map');
+        if (wayfindCanvas) {
+          const data = VenueData.getSnapshot();
+          HeatmapRenderer.render(wayfindCanvas, data, {
+            showLabels: true, showUserPosition: true, compact: false, showPitch: true,
+          });
+          HeatmapRenderer.renderRoute(wayfindCanvas, activeRoute, VenueData.getNavGraph());
+        }
+      }
+      navAnimFrame = requestAnimationFrame(animateNav);
+    }
+    animateNav();
   }
 
   function startARAnimation() {
@@ -1226,6 +1268,7 @@ const AttendeeView = (() => {
 
   function destroy() {
     if (arAnimFrame) cancelAnimationFrame(arAnimFrame);
+    if (navAnimFrame) cancelAnimationFrame(navAnimFrame);
   }
 
   return { init, update, destroy };
