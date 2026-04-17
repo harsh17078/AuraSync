@@ -389,5 +389,277 @@ const HeatmapRenderer = (() => {
     return null;
   }
 
-  return { render, hitTest, lerpColor };
+  // =====================================================
+  //  Wayfinding Route Rendering
+  // =====================================================
+
+  function renderRoute(canvas, route, navGraph) {
+    if (!canvas || !route || !route.path || route.path.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+
+    const nodes = navGraph.nodes;
+
+    // Draw route segments
+    for (let i = 0; i < route.path.length - 1; i++) {
+      const fromNode = nodes[route.path[i]];
+      const toNode = nodes[route.path[i + 1]];
+      if (!fromNode || !toNode) continue;
+
+      const fx = Math.max(0, Math.min(1, fromNode.x)) * w;
+      const fy = Math.max(0, Math.min(1, fromNode.y)) * h;
+      const tx = Math.max(0, Math.min(1, toNode.x)) * w;
+      const ty = Math.max(0, Math.min(1, toNode.y)) * h;
+
+      const segment = route.segments ? route.segments[i] : null;
+      const crowdColor = segment ?
+        (segment.crowdColor === 'green' ? '#22C55E' :
+         segment.crowdColor === 'yellow' ? '#EAB308' : '#EF4444') : '#00D4FF';
+
+      // Glow effect
+      ctx.save();
+      ctx.shadowColor = crowdColor;
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = crowdColor;
+      ctx.lineWidth = 4;
+      ctx.setLineDash([8, 4]);
+      ctx.lineDashOffset = -(Date.now() / 50) % 12;
+
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+      ctx.restore();
+
+      // Arrow at midpoint
+      const mx = (fx + tx) / 2;
+      const my = (fy + ty) / 2;
+      const angle = Math.atan2(ty - fy, tx - fx);
+
+      ctx.save();
+      ctx.translate(mx, my);
+      ctx.rotate(angle);
+      ctx.fillStyle = crowdColor;
+      ctx.beginPath();
+      ctx.moveTo(6, 0);
+      ctx.lineTo(-4, -4);
+      ctx.lineTo(-4, 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw node markers along route
+    route.path.forEach((nodeId, i) => {
+      const node = nodes[nodeId];
+      if (!node) return;
+      const nx = Math.max(0, Math.min(1, node.x)) * w;
+      const ny = Math.max(0, Math.min(1, node.y)) * h;
+
+      const isStart = i === 0;
+      const isEnd = i === route.path.length - 1;
+      const size = (isStart || isEnd) ? 18 : 10;
+      const color = isStart ? '#00D4FF' : isEnd ? '#22C55E' : 'rgba(255,255,255,0.6)';
+
+      // Pulse for start and end
+      if (isStart || isEnd) {
+        const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+        ctx.beginPath();
+        ctx.arc(nx, ny, size * pulse, 0, Math.PI * 2);
+        ctx.fillStyle = `${color}30`;
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(nx, ny, size / 2, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#0a0e1a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Label
+      if (isStart || isEnd) {
+        ctx.font = '600 10px Inter, sans-serif';
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.fillText(isStart ? 'START' : 'END', nx, ny - size);
+      }
+    });
+  }
+
+  // =====================================================
+  //  AR Safety Overlay Rendering
+  // =====================================================
+
+  function renderAROverlay(canvas, arData) {
+    if (!canvas || !arData) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const w = rect.width;
+    const h = rect.height;
+
+    // Simulated camera background — dark gradient with scan lines
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+    bgGrad.addColorStop(0, '#0d1117');
+    bgGrad.addColorStop(0.5, '#161b22');
+    bgGrad.addColorStop(1, '#0d1117');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Scan lines
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.03)';
+    ctx.lineWidth = 1;
+    for (let y = 0; y < h; y += 3) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Grid overlay
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.06)';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x < w; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    // Corner brackets (AR viewfinder)
+    const bLen = 30;
+    const bPad = 15;
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.6)';
+    ctx.lineWidth = 2;
+    // Top-left
+    ctx.beginPath(); ctx.moveTo(bPad, bPad + bLen); ctx.lineTo(bPad, bPad); ctx.lineTo(bPad + bLen, bPad); ctx.stroke();
+    // Top-right
+    ctx.beginPath(); ctx.moveTo(w - bPad - bLen, bPad); ctx.lineTo(w - bPad, bPad); ctx.lineTo(w - bPad, bPad + bLen); ctx.stroke();
+    // Bottom-left
+    ctx.beginPath(); ctx.moveTo(bPad, h - bPad - bLen); ctx.lineTo(bPad, h - bPad); ctx.lineTo(bPad + bLen, h - bPad); ctx.stroke();
+    // Bottom-right
+    ctx.beginPath(); ctx.moveTo(w - bPad - bLen, h - bPad); ctx.lineTo(w - bPad, h - bPad); ctx.lineTo(w - bPad, h - bPad - bLen); ctx.stroke();
+
+    // Traffic zones
+    if (arData.trafficZones) {
+      arData.trafficZones.forEach(tz => {
+        const tx = tz.x * w;
+        const ty = tz.y * h;
+        const tr = tz.radius * Math.min(w, h);
+        const color = tz.level === 'high' ? '239, 68, 68' :
+                      tz.level === 'moderate' ? '234, 179, 8' : '34, 197, 94';
+
+        // Traffic zone circle
+        const grad = ctx.createRadialGradient(tx, ty, 0, tx, ty, tr);
+        grad.addColorStop(0, `rgba(${color}, 0.3)`);
+        grad.addColorStop(0.7, `rgba(${color}, 0.1)`);
+        grad.addColorStop(1, `rgba(${color}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(tx, ty, tr, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pulsing border
+        const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.5;
+        ctx.strokeStyle = `rgba(${color}, ${pulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Label
+        ctx.fillStyle = 'rgba(10, 14, 26, 0.85)';
+        const labelW = 110;
+        ctx.beginPath();
+        ctx.roundRect(tx - labelW / 2, ty - 18, labelW, 36, 6);
+        ctx.fill();
+
+        ctx.font = '600 10px Inter, sans-serif';
+        ctx.fillStyle = `rgb(${color})`;
+        ctx.textAlign = 'center';
+        ctx.fillText(tz.area, tx, ty - 4);
+        ctx.font = '500 9px Inter, sans-serif';
+        ctx.fillStyle = '#94A3B8';
+        ctx.fillText(tz.tips, tx, ty + 10);
+      });
+    }
+
+    // Friend markers
+    if (arData.friends) {
+      arData.friends.forEach(f => {
+        const fx = f.x * w;
+        const fy = f.y * h;
+
+        // Ping circle
+        const pingPhase = (Date.now() / 1000 + f.x * 10) % 2;
+        if (pingPhase < 1) {
+          ctx.beginPath();
+          ctx.arc(fx, fy, 20 * pingPhase, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(0, 212, 255, ${1 - pingPhase})`;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+
+        // Avatar dot
+        ctx.beginPath();
+        ctx.arc(fx, fy, 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 212, 255, 0.2)';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(fx, fy, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#00D4FF';
+        ctx.fill();
+
+        // Name tag
+        ctx.font = '700 10px Inter, sans-serif';
+        const nameWidth = ctx.measureText(f.name).width;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.beginPath();
+        ctx.roundRect(fx - nameWidth / 2 - 8, fy - 28, nameWidth + 16, 18, 4);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 212, 255, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#00D4FF';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${f.emoji} ${f.name}`, fx, fy - 16);
+
+        // Distance
+        ctx.font = '500 8px Inter, sans-serif';
+        ctx.fillStyle = '#94A3B8';
+        ctx.fillText(`${f.distance}m away`, fx, fy + 22);
+      });
+    }
+
+    // HUD — top status bar
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, w, 32);
+    ctx.font = '600 10px Inter, sans-serif';
+    ctx.fillStyle = '#00D4FF';
+    ctx.textAlign = 'left';
+    ctx.fillText('📡 AR SAFETY VIEW', 12, 20);
+    ctx.textAlign = 'right';
+    const now = new Date();
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillText(`LIVE · ${now.toLocaleTimeString()}`, w - 12, 20);
+
+    // Scanning animation line
+    const scanY = (Date.now() / 20) % h;
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, scanY);
+    ctx.lineTo(w, scanY);
+    ctx.stroke();
+  }
+
+  return { render, hitTest, lerpColor, renderRoute, renderAROverlay };
 })();

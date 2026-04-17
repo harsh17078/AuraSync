@@ -1,6 +1,7 @@
 /* ============================================================
    VenueFlow — Attendee View Controller (Enhanced)
    Virtual Queuing · Click-and-Collect · Express Lanes
+   Predictive Wayfinding · AR Overlays · Smart Ingress/Egress
    ============================================================ */
 
 const AttendeeView = (() => {
@@ -9,6 +10,9 @@ const AttendeeView = (() => {
   let foodFilter = 'all';
   let initialized = false;
   let selectedExpressLane = null;
+  let selectedWayfindingDest = null;
+  let activeRoute = null;
+  let arAnimFrame = null;
 
   function init(el) {
     container = el;
@@ -32,14 +36,20 @@ const AttendeeView = (() => {
         <div id="att-tab-home" class="tab-content tab-content--active">
           <div id="att-home-content">${renderHomeTab(data)}</div>
         </div>
-        <div id="att-tab-map" class="tab-content">
-          <div id="att-map-content">${renderMapTab(data)}</div>
+        <div id="att-tab-navigate" class="tab-content">
+          <div id="att-navigate-content">${renderNavigateTab(data)}</div>
         </div>
         <div id="att-tab-food" class="tab-content">
           <div id="att-food-content">${renderFoodTab(data)}</div>
         </div>
         <div id="att-tab-services" class="tab-content">
           <div id="att-services-content">${renderServicesTab(data)}</div>
+        </div>
+        <div id="att-tab-ar" class="tab-content">
+          <div id="att-ar-content">${renderARTab(data)}</div>
+        </div>
+        <div id="att-tab-ticket" class="tab-content">
+          <div id="att-ticket-content">${renderTicketTab(data)}</div>
         </div>
         <div id="att-tab-alerts" class="tab-content">
           <div id="att-alerts-content">${renderAlertsTab(data)}</div>
@@ -50,14 +60,17 @@ const AttendeeView = (() => {
           <button class="bottom-nav__item bottom-nav__item--active" data-tab="home">
             <span class="bottom-nav__icon">🏠</span>Home
           </button>
-          <button class="bottom-nav__item" data-tab="map">
-            <span class="bottom-nav__icon">🗺️</span>Map
+          <button class="bottom-nav__item" data-tab="navigate">
+            <span class="bottom-nav__icon">🧭</span>Navigate
           </button>
           <button class="bottom-nav__item" data-tab="food">
             <span class="bottom-nav__icon">🍔</span>Order
           </button>
-          <button class="bottom-nav__item" data-tab="services">
-            <span class="bottom-nav__icon">🚻</span>Services
+          <button class="bottom-nav__item" data-tab="ar">
+            <span class="bottom-nav__icon">📡</span>AR View
+          </button>
+          <button class="bottom-nav__item" data-tab="ticket">
+            <span class="bottom-nav__icon">🎫</span>Ticket
           </button>
           <button class="bottom-nav__item" data-tab="alerts">
             <span class="bottom-nav__icon">🔔</span>Alerts
@@ -100,7 +113,6 @@ const AttendeeView = (() => {
         orderBtn.textContent = '✓ Ordered';
         orderBtn.disabled = true;
         orderBtn.style.opacity = '0.5';
-        // Refresh order section
         setTimeout(() => {
           const el = document.getElementById('att-food-content');
           if (el) el.innerHTML = renderFoodTab(VenueData.getSnapshot());
@@ -156,12 +168,54 @@ const AttendeeView = (() => {
         updatePickupBanner(VenueData.getSnapshot());
         return;
       }
+
+      // Wayfinding destination selection
+      const destBtn = e.target.closest('[data-wayfind-dest]');
+      if (destBtn) {
+        e.preventDefault();
+        selectedWayfindingDest = destBtn.dataset.wayfindDest;
+        activeRoute = VenueData.findFastestRoute('user-seat', selectedWayfindingDest);
+        refreshNavigate();
+        return;
+      }
+
+      // Concession queue join
+      const cqJoinBtn = e.target.closest('[data-join-concession-queue]');
+      if (cqJoinBtn) {
+        e.preventDefault();
+        VenueData.joinConcessionQueue(cqJoinBtn.dataset.joinConcessionQueue);
+        cqJoinBtn.textContent = '✓ Queued';
+        cqJoinBtn.disabled = true;
+        setTimeout(() => {
+          const el = document.getElementById('att-food-content');
+          if (el) el.innerHTML = renderFoodTab(VenueData.getSnapshot());
+        }, 500);
+        return;
+      }
+
+      // Leave concession queue
+      const cqLeaveBtn = e.target.closest('[data-leave-concession-queue]');
+      if (cqLeaveBtn) {
+        e.preventDefault();
+        VenueData.leaveConcessionQueue(cqLeaveBtn.dataset.leaveConcessionQueue);
+        const el = document.getElementById('att-food-content');
+        if (el) el.innerHTML = renderFoodTab(VenueData.getSnapshot());
+        return;
+      }
     });
   }
 
   function refreshServices() {
     const el = document.getElementById('att-services-content');
     if (el) el.innerHTML = renderServicesTab(VenueData.getSnapshot());
+  }
+
+  function refreshNavigate() {
+    const el = document.getElementById('att-navigate-content');
+    if (el) {
+      el.innerHTML = renderNavigateTab(VenueData.getSnapshot());
+      setTimeout(() => renderNavigateCanvases(VenueData.getSnapshot()), 100);
+    }
   }
 
   // =====================================================
@@ -172,20 +226,37 @@ const AttendeeView = (() => {
     const banner = document.getElementById('att-pickup-banner');
     if (!banner) return;
     const readyNotifs = (data.pickupNotifications || []).filter(p => !p.dismissed);
-    if (readyNotifs.length === 0) {
-      banner.innerHTML = '';
-      return;
-    }
-    banner.innerHTML = readyNotifs.map(n => `
-      <div class="pickup-banner">
-        <div class="pickup-banner__pulse"></div>
-        <div class="pickup-banner__content">
-          <div class="pickup-banner__title">${n.title}</div>
-          <div class="pickup-banner__desc">${n.desc}</div>
+    // Also show approaching concession queue alerts
+    const approachingQueues = (data.concessionQueues || []).filter(q => q.status === 'approaching');
+
+    const bannerItems = [];
+
+    readyNotifs.forEach(n => {
+      bannerItems.push(`
+        <div class="pickup-banner">
+          <div class="pickup-banner__pulse"></div>
+          <div class="pickup-banner__content">
+            <div class="pickup-banner__title">${n.title}</div>
+            <div class="pickup-banner__desc">${n.desc}</div>
+          </div>
+          <button class="pickup-banner__dismiss" data-dismiss-pickup="${n.id}">✕</button>
         </div>
-        <button class="pickup-banner__dismiss" data-dismiss-pickup="${n.id}">✕</button>
-      </div>
-    `).join('');
+      `);
+    });
+
+    approachingQueues.forEach(q => {
+      bannerItems.push(`
+        <div class="pickup-banner" style="border-color: rgba(234, 179, 8, 0.4); background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.05));">
+          <div class="pickup-banner__pulse" style="background: var(--color-accent-amber); box-shadow: 0 0 12px rgba(234, 179, 8, 0.5);"></div>
+          <div class="pickup-banner__content">
+            <div class="pickup-banner__title" style="color: var(--color-accent-amber);">⏰ Head to ${q.concessionName} now!</div>
+            <div class="pickup-banner__desc">~2 min until your turn · ${q.location}</div>
+          </div>
+        </div>
+      `);
+    });
+
+    banner.innerHTML = bannerItems.join('');
   }
 
   // =====================================================
@@ -265,7 +336,16 @@ const AttendeeView = (() => {
         ${data.activeOrders.filter(o => o.status !== 'picked_up').map(o => renderOrderTimeline(o)).join('')}
       ` : ''}
 
-      <!-- Active Queue / Reservation -->
+      <!-- Active Concession Queues -->
+      ${(data.concessionQueues || []).filter(q => q.status !== 'served' && q.status !== 'completed').length > 0 ? `
+        <div class="section-header">
+          <div class="section-header__title">🍔 Virtual Queue</div>
+          <span class="badge badge--amber">Active</span>
+        </div>
+        ${data.concessionQueues.filter(q => q.status !== 'served' && q.status !== 'completed').map(q => renderConcessionQueueCard(q)).join('')}
+      ` : ''}
+
+      <!-- Active Restroom Queue / Reservation -->
       ${data.restroomQueues.filter(q => q.status !== 'completed').length > 0 ? `
         <div class="section-header">
           <div class="section-header__title">🚻 Your Queue Position</div>
@@ -283,7 +363,7 @@ const AttendeeView = (() => {
       <!-- Venue Overview -->
       <div class="section-header">
         <div class="section-header__title">🗺️ Venue Overview</div>
-        <span class="section-header__action" data-switch-tab="map">Full Map →</span>
+        <span class="section-header__action" data-switch-tab="navigate">Navigate →</span>
       </div>
       <div class="venue-map-container">
         <canvas class="venue-map-canvas" id="att-home-heatmap"></canvas>
@@ -305,51 +385,129 @@ const AttendeeView = (() => {
   }
 
   // =====================================================
-  //  Map Tab
+  //  FEATURE 1: Navigate Tab (Predictive Wayfinding)
   // =====================================================
 
-  function renderMapTab(data) {
+  function renderNavigateTab(data) {
+    const destinations = VenueData.getWayfindingDestinations();
+    const grouped = {
+      gate: destinations.filter(d => d.type === 'gate'),
+      food: destinations.filter(d => d.type === 'food' || d.type === 'drink'),
+      restroom: destinations.filter(d => d.type === 'restroom'),
+      other: destinations.filter(d => ['parking', 'transit', 'concourse', 'junction'].includes(d.type)),
+    };
+
     return `
       <div class="section-header">
-        <div class="section-header__title">🗺️ Live Venue Map</div>
-        <span class="badge badge--blue"><span class="live-dot" style="width:6px;height:6px;margin-right:4px"></span> Real-time</span>
+        <div class="section-header__title">🧭 Seat-to-Street Navigation</div>
+        <span class="badge badge--blue"><span class="live-dot" style="width:6px;height:6px;margin-right:4px"></span> Crowd-aware</span>
       </div>
-      <div class="venue-map-container">
-        <canvas class="venue-map-canvas" id="att-full-heatmap" style="height:350px"></canvas>
-        <div class="venue-map__info">
-          <span class="venue-map__seat">📍 ${data.userPosition.seat}</span>
-          <span class="venue-map__capacity">Tap a zone for details</span>
+      <div class="smart-suggestion" style="margin-bottom:16px">
+        <div class="smart-suggestion__icon">🧠</div>
+        <div class="smart-suggestion__text">
+          <div class="smart-suggestion__title">Predictive Wayfinding</div>
+          <div class="smart-suggestion__desc">Routes are computed using Dijkstra's algorithm weighted by <strong>live crowd density</strong>. The fastest path may differ from the shortest!</div>
         </div>
       </div>
-      <div class="section-header"><div class="section-header__title">📊 Zone Status</div></div>
-      ${data.zones.filter(z => z.type === 'seating' || z.type === 'concourse').map(z => {
-        const pct = Math.round(z.occupancy * 100);
-        const color = pct > 85 ? 'red' : pct > 65 ? 'orange' : pct > 40 ? 'yellow' : 'green';
-        return `<div class="route-card" style="margin-bottom: 8px">
-            <div class="route-card__icon">${z.type === 'seating' ? '🏟️' : '🚶'}</div>
-            <div class="route-card__info">
-              <div class="route-card__name">${z.name}</div>
-              <div class="route-card__details"><span>${z.type}</span> · <span>${(Math.round(z.occupancy * z.capacity)).toLocaleString()} people</span></div>
-              <div class="progress-bar" style="margin-top:6px">
-                <div class="progress-bar__fill" style="width:${pct}%; background: var(--color-${color})"></div>
+
+      ${activeRoute ? renderActiveRoute(activeRoute) : ''}
+
+      <!-- Route Map -->
+      <div class="venue-map-container" style="margin-bottom:16px">
+        <canvas class="venue-map-canvas" id="att-wayfinding-map" style="height:320px"></canvas>
+        <div class="venue-map__info">
+          <span class="venue-map__seat">📍 ${data.userPosition.seat}</span>
+          <span class="venue-map__capacity">${selectedWayfindingDest ? 'Route shown on map' : 'Select a destination below'}</span>
+        </div>
+      </div>
+
+      <!-- Exits -->
+      <div class="section-header"><div class="section-header__title">🚪 Exits & Gates</div></div>
+      ${grouped.gate.map(d => renderDestinationCard(d)).join('')}
+
+      <!-- Food & Drink -->
+      <div class="section-header"><div class="section-header__title">🍽️ Food & Drink</div></div>
+      ${grouped.food.map(d => renderDestinationCard(d)).join('')}
+
+      <!-- Restrooms -->
+      <div class="section-header"><div class="section-header__title">🚻 Restrooms</div></div>
+      ${grouped.restroom.map(d => renderDestinationCard(d)).join('')}
+
+      <!-- Other -->
+      <div class="section-header"><div class="section-header__title">📍 Other Destinations</div></div>
+      ${grouped.other.filter(d => d.type !== 'junction').map(d => renderDestinationCard(d)).join('')}
+    `;
+  }
+
+  function renderDestinationCard(dest) {
+    const r = dest.route;
+    const sr = dest.shortestRoute;
+    const isSelected = selectedWayfindingDest === dest.id;
+    const timeSaved = sr && r ? sr.totalMin - r.totalWalkMin : 0;
+
+    return `
+      <div class="route-card ${isSelected ? 'route-card--selected' : ''}" data-wayfind-dest="${dest.id}" style="cursor:pointer; ${isSelected ? 'border-color: var(--color-accent-blue); box-shadow: var(--shadow-glow-blue);' : ''}">
+        <div class="route-card__icon">${dest.icon}</div>
+        <div class="route-card__info">
+          <div class="route-card__name">${dest.label}</div>
+          <div class="route-card__details">
+            <span>Fastest: ${r ? r.totalWalkMin : '?'} min</span>
+            ${timeSaved > 0 ? `<span style="color:var(--color-green)">Saves ${timeSaved} min vs shortest</span>` : ''}
+          </div>
+          ${r ? `<div style="display:flex;gap:4px;margin-top:4px;">
+            ${r.segments.map(s => `<span class="crowd-dot crowd-dot--${s.crowdColor}" title="${s.crowdLabel} crowd"></span>`).join('')}
+          </div>` : ''}
+        </div>
+        <div style="text-align:right">
+          <span class="route-card__time" style="color: ${r && r.maxCrowdLevel > 2.2 ? 'var(--color-red)' : r && r.maxCrowdLevel > 1.5 ? 'var(--color-yellow)' : 'var(--color-green)'}">${r ? r.totalWalkMin : '?'}</span>
+          <div class="route-card__time-unit">min</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderActiveRoute(route) {
+    if (!route) return '';
+    const navGraph = VenueData.getNavGraph();
+    return `
+      <div class="active-route-card">
+        <div class="active-route-card__header">
+          <div>
+            <div class="active-route-card__title">📍 → ${route.destinationNode.icon} ${route.destinationNode.label}</div>
+            <div class="active-route-card__subtitle">Crowd-optimized route</div>
+          </div>
+          <div class="active-route-card__time">${route.totalWalkMin}<span style="font-size:var(--text-xs);font-weight:500"> min</span></div>
+        </div>
+        <div class="active-route-card__segments">
+          ${route.segments.map((s, i) => `
+            <div class="route-segment">
+              <div class="route-segment__dot route-segment__dot--${s.crowdColor}"></div>
+              <div class="route-segment__info">
+                <span class="route-segment__from">${navGraph.nodes[s.from]?.label || s.from}</span>
+                <span class="route-segment__arrow">→</span>
+                <span class="route-segment__to">${navGraph.nodes[s.to]?.label || s.to}</span>
+              </div>
+              <div class="route-segment__meta">
+                <span class="route-segment__walk">${s.walkMin} min</span>
+                <span class="crowd-badge crowd-badge--${s.crowdColor}">${s.crowdLabel}</span>
               </div>
             </div>
-            <div style="text-align:right">
-              <span class="route-card__time" style="color: var(--color-${color})">${pct}%</span>
-              <div class="route-card__time-unit">capacity</div>
-            </div>
-          </div>`;
-      }).join('')}
+          `).join('')}
+        </div>
+      </div>
     `;
   }
 
   // =====================================================
-  //  Food Tab (Click-and-Collect)
+  //  Food Tab (with Virtual Concession Queuing)
   // =====================================================
 
   function renderFoodTab(data) {
     const filtered = foodFilter === 'all' ? data.foodMenu :
                      data.foodMenu.filter(item => item.category === foodFilter);
+
+    // Active concession queues
+    const activeQueues = (data.concessionQueues || []).filter(q => q.status !== 'served' && q.status !== 'completed');
 
     return `
       <div class="section-header">
@@ -357,7 +515,53 @@ const AttendeeView = (() => {
         <span class="badge badge--blue">Order from your seat</span>
       </div>
 
-      <div class="food-tabs">
+      <!-- Virtual Queue Banner -->
+      <div class="smart-suggestion" style="margin-bottom:16px; border-color: rgba(168, 85, 247, 0.3); background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(168, 85, 247, 0.02));">
+        <div class="smart-suggestion__icon">⏰</div>
+        <div class="smart-suggestion__text">
+          <div class="smart-suggestion__title" style="color:var(--color-accent-purple)">Virtual Queuing Available</div>
+          <div class="smart-suggestion__desc">Join the line from your seat! We'll send a <strong>2-minute alert</strong> before it's your turn — no standing required.</div>
+        </div>
+      </div>
+
+      <!-- Active Concession Queues -->
+      ${activeQueues.length > 0 ? `
+        <div class="section-header">
+          <div class="section-header__title">📋 Your Virtual Queues</div>
+          <span class="badge badge--amber">${activeQueues.length} active</span>
+        </div>
+        ${activeQueues.map(q => renderConcessionQueueCard(q)).join('')}
+      ` : ''}
+
+      <!-- Queue for popular stands -->
+      <div class="section-header">
+        <div class="section-header__title">🏪 Join a Queue</div>
+      </div>
+      <div class="concession-queue-grid">
+        ${data.concessions.filter(c => c.type === 'food').map(stand => {
+          const inQueue = activeQueues.find(q => q.concessionId === stand.id);
+          const statusColor = stand.waitTime <= 5 ? 'green' : stand.waitTime <= 10 ? 'yellow' : stand.waitTime <= 15 ? 'orange' : 'red';
+          return `
+            <div class="concession-queue-item">
+              <span style="font-size:24px">${stand.icon}</span>
+              <div class="concession-queue-item__info">
+                <div class="concession-queue-item__name">${stand.name}</div>
+                <div class="concession-queue-item__wait">
+                  <span class="food-item__wait-dot food-item__wait-dot--${statusColor}"></span>
+                  ${stand.waitTime} min wait
+                </div>
+              </div>
+              ${inQueue ? `
+                <button class="btn btn-sm btn-secondary" data-leave-concession-queue="${inQueue.id}">Leave</button>
+              ` : `
+                <button class="btn btn-sm btn-primary" data-join-concession-queue="${stand.id}" style="font-size:10px">Join Queue</button>
+              `}
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <div class="food-tabs" style="margin-top:20px">
         <button class="food-tab ${foodFilter === 'all' ? 'food-tab--active' : ''}" data-food-filter="all">All</button>
         <button class="food-tab ${foodFilter === 'food' ? 'food-tab--active' : ''}" data-food-filter="food">🍔 Food</button>
         <button class="food-tab ${foodFilter === 'drink' ? 'food-tab--active' : ''}" data-food-filter="drink">🍺 Drinks</button>
@@ -530,6 +734,225 @@ const AttendeeView = (() => {
   }
 
   // =====================================================
+  //  FEATURE 3: AR Safety Overlays Tab
+  // =====================================================
+
+  function renderARTab(data) {
+    const ar = data.arOverlay;
+    return `
+      <div class="section-header">
+        <div class="section-header__title">📡 AR Safety View</div>
+        <span class="badge badge--blue"><span class="live-dot" style="width:6px;height:6px;margin-right:4px"></span> Live</span>
+      </div>
+
+      <div class="smart-suggestion" style="margin-bottom:16px; border-color: rgba(0, 212, 255, 0.3);">
+        <div class="smart-suggestion__icon">📱</div>
+        <div class="smart-suggestion__text">
+          <div class="smart-suggestion__title">Augmented Reality View</div>
+          <div class="smart-suggestion__desc">See <strong>live traffic levels</strong>, locate friends, and find emergency exits overlaid on the venue map.</div>
+        </div>
+      </div>
+
+      <!-- AR Canvas -->
+      <div class="ar-viewport">
+        <canvas class="ar-canvas" id="att-ar-canvas"></canvas>
+        <div class="ar-viewport__badge">
+          <span class="live-dot" style="width:5px;height:5px;margin-right:4px"></span> AR LIVE
+        </div>
+      </div>
+
+      <!-- Safety Quick-Access -->
+      <div class="section-header"><div class="section-header__title">🆘 Safety Quick-Access</div></div>
+      <div class="safety-grid">
+        ${ar.safetyAlerts.map(alert => `
+          <div class="safety-card">
+            <span class="safety-card__icon">${alert.icon}</span>
+            <div class="safety-card__info">
+              <div class="safety-card__label">${alert.label}</div>
+              <div class="safety-card__direction">${alert.direction}</div>
+            </div>
+            <span class="safety-card__distance">${alert.distance}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Friends Nearby -->
+      <div class="section-header"><div class="section-header__title">👥 Friends in Venue</div></div>
+      <div class="friends-list">
+        ${ar.friends.map(f => `
+          <div class="friend-card">
+            <div class="friend-card__avatar">${f.emoji}</div>
+            <div class="friend-card__info">
+              <div class="friend-card__name">${f.name}</div>
+              <div class="friend-card__location">${f.section} · ${f.seat}</div>
+            </div>
+            <div class="friend-card__distance">
+              <span class="friend-card__distance-num">${f.distance}m</span>
+              <span class="friend-card__status friend-card__status--${f.status}">${f.status.replace(/-/g, ' ')}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Traffic Overview -->
+      <div class="section-header"><div class="section-header__title">🚦 Concourse Traffic</div></div>
+      ${ar.trafficZones.map(tz => {
+        const statusColor = tz.level === 'high' ? 'red' : tz.level === 'moderate' ? 'yellow' : 'green';
+        return `
+          <div class="traffic-card traffic-card--${statusColor}">
+            <div class="traffic-card__header">
+              <span class="traffic-card__name">${tz.area}</span>
+              <span class="badge badge--${statusColor}">${Math.round(tz.occupancy * 100)}%</span>
+            </div>
+            <div class="progress-bar" style="margin-top:6px">
+              <div class="progress-bar__fill" style="width:${Math.round(tz.occupancy * 100)}%; background: var(--color-${statusColor})"></div>
+            </div>
+            <div class="traffic-card__tip">${tz.tips}</div>
+          </div>
+        `;
+      }).join('')}
+    `;
+  }
+
+  // =====================================================
+  //  FEATURE 4: Smart Ingress/Egress (Ticket Tab)
+  // =====================================================
+
+  function renderTicketTab(data) {
+    const ticket = data.digitalTicket;
+    const exit = data.userExitAssignment;
+    const gates = data.gateThroughput;
+
+    return `
+      <div class="section-header">
+        <div class="section-header__title">🎫 Digital Ticket</div>
+        <span class="badge badge--green">✓ ${ticket.scanStatus}</span>
+      </div>
+
+      <!-- Digital Ticket Card -->
+      <div class="digital-ticket">
+        <div class="digital-ticket__header">
+          <div class="digital-ticket__event">
+            <div class="digital-ticket__event-name">⚡ ${data.match.homeTeam} vs ${data.match.awayTeam}</div>
+            <div class="digital-ticket__venue">📍 ${data.match.venue}</div>
+          </div>
+          <div class="digital-ticket__id">${ticket.id}</div>
+        </div>
+        <div class="digital-ticket__details">
+          <div class="digital-ticket__detail">
+            <span class="digital-ticket__detail-label">Section</span>
+            <span class="digital-ticket__detail-value">${ticket.section}</span>
+          </div>
+          <div class="digital-ticket__detail">
+            <span class="digital-ticket__detail-label">Row</span>
+            <span class="digital-ticket__detail-value">${ticket.row}</span>
+          </div>
+          <div class="digital-ticket__detail">
+            <span class="digital-ticket__detail-label">Seat</span>
+            <span class="digital-ticket__detail-value">${ticket.seat}</span>
+          </div>
+          <div class="digital-ticket__detail">
+            <span class="digital-ticket__detail-label">Entry Gate</span>
+            <span class="digital-ticket__detail-value" style="color:var(--color-accent-blue)">${ticket.gate}</span>
+          </div>
+        </div>
+        <div class="digital-ticket__barcode">${ticket.barcode}</div>
+        <div class="digital-ticket__barcode-label">Scan at turnstile</div>
+      </div>
+
+      <!-- Geo-Fenced Gate Assignment -->
+      <div class="section-header">
+        <div class="section-header__title">📍 Smart Gate Assignment</div>
+        <span class="badge badge--blue">Geo-fenced</span>
+      </div>
+      <div class="smart-suggestion" style="margin-bottom:16px">
+        <div class="smart-suggestion__icon">📡</div>
+        <div class="smart-suggestion__text">
+          <div class="smart-suggestion__title">Your Assigned Gate: ${ticket.gate}</div>
+          <div class="smart-suggestion__desc">Based on your seat in <strong>${ticket.section}</strong>, you've been assigned to <strong>${ticket.gate}</strong> for the fastest entry. Geo-fencing detects your approach automatically.</div>
+        </div>
+      </div>
+
+      <!-- Gate Throughput Monitor -->
+      <div class="section-header">
+        <div class="section-header__title">🚪 Gate Status (Live)</div>
+      </div>
+      <div class="gate-grid">
+        ${Object.entries(gates).map(([gateId, gt]) => {
+          const gateName = gateId.replace('gate-', 'Gate ').toUpperCase();
+          const statusColor = gt.status === 'optimal' ? 'green' : gt.status === 'normal' ? 'yellow' : 'red';
+          const isAssigned = ticket.gate.toLowerCase().replace(' ', '-') === gateId;
+          return `
+            <div class="gate-card ${isAssigned ? 'gate-card--assigned' : ''}">
+              <div class="gate-card__header">
+                <span class="gate-card__name">${gateName}</span>
+                ${isAssigned ? '<span class="badge badge--blue" style="font-size:8px">YOUR GATE</span>' : ''}
+              </div>
+              <div class="gate-card__metrics">
+                <div class="gate-card__metric">
+                  <div class="gate-card__metric-value" style="color:var(--color-${statusColor})">${gt.waitMin}</div>
+                  <div class="gate-card__metric-label">min wait</div>
+                </div>
+                <div class="gate-card__metric">
+                  <div class="gate-card__metric-value">${gt.queueLength}</div>
+                  <div class="gate-card__metric-label">in queue</div>
+                </div>
+                <div class="gate-card__metric">
+                  <div class="gate-card__metric-value">${gt.throughput}</div>
+                  <div class="gate-card__metric-label">ppl/min</div>
+                </div>
+              </div>
+              <div class="progress-bar" style="margin-top:6px">
+                <div class="progress-bar__fill" style="width:${Math.min(100, gt.queueLength / 1.2)}%; background:var(--color-${statusColor})"></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <!-- Staggered Exit Windows -->
+      <div class="section-header" style="margin-top:20px">
+        <div class="section-header__title">🚶 Staggered Exit Plan</div>
+        <span class="badge badge--purple">Anti-bottleneck</span>
+      </div>
+      <div class="smart-suggestion" style="margin-bottom:12px; border-color: rgba(34, 197, 94, 0.3); background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.02));">
+        <div class="smart-suggestion__icon">✅</div>
+        <div class="smart-suggestion__text">
+          <div class="smart-suggestion__title" style="color:var(--color-green)">Your Exit: ${exit.wave}</div>
+          <div class="smart-suggestion__desc">Depart at <strong>${exit.estimatedDepartTime}</strong> via <strong>${exit.gate}</strong>. Estimated exit time: <strong>${exit.estimatedExitDuration}</strong>.</div>
+        </div>
+      </div>
+
+      ${data.exitWindows.map((w, i) => {
+        const isUserWave = w.id === exit.waveId;
+        const fillPct = Math.round((w.assigned / w.capacity) * 100);
+        return `
+          <div class="exit-wave ${isUserWave ? 'exit-wave--active' : ''}">
+            <div class="exit-wave__header">
+              <div>
+                <div class="exit-wave__label">${w.label}</div>
+                <div class="exit-wave__sections">${w.sections}</div>
+              </div>
+              <div class="exit-wave__time">
+                <div class="exit-wave__depart">${w.departureDisplay}</div>
+                <div class="exit-wave__gate">${w.recommendedGate}</div>
+              </div>
+            </div>
+            <div class="progress-bar" style="margin-top:6px">
+              <div class="progress-bar__fill" style="width:${fillPct}%; background:var(--color-${w.color})"></div>
+            </div>
+            <div class="exit-wave__meta">
+              <span>${w.assigned.toLocaleString()} / ${w.capacity.toLocaleString()} assigned</span>
+              <span>Clear in ~${w.estimatedClearTime}</span>
+            </div>
+            ${isUserWave ? '<div class="exit-wave__you">← You are here</div>' : ''}
+          </div>
+        `;
+      }).join('')}
+    `;
+  }
+
+  // =====================================================
   //  Alerts Tab
   // =====================================================
 
@@ -565,6 +988,40 @@ const AttendeeView = (() => {
   // =====================================================
   //  Shared Renderers
   // =====================================================
+
+  function renderConcessionQueueCard(q) {
+    const pctDone = q.startPosition > 0 ? Math.round(((q.startPosition - q.position) / q.startPosition) * 100) : 0;
+    const statusColor = q.status === 'your_turn' ? 'green' : q.status === 'approaching' ? 'amber' : 'blue';
+    const statusLabel = q.status === 'your_turn' ? '🔔 YOUR TURN!' :
+                        q.status === 'approaching' ? '⏰ Almost there!' :
+                        q.status === 'queued' ? `#${q.position} in line` : q.status;
+
+    return `
+      <div class="concession-queue-card concession-queue-card--${q.status}">
+        <div class="concession-queue-card__header">
+          <span style="font-size:24px">${q.concessionIcon}</span>
+          <div>
+            <div class="concession-queue-card__name">${q.concessionName}</div>
+            <div class="concession-queue-card__location">${q.location}</div>
+          </div>
+          <div class="concession-queue-card__status">
+            <span class="badge badge--${statusColor}">${statusLabel}</span>
+          </div>
+        </div>
+        <div class="progress-bar" style="margin:8px 0">
+          <div class="progress-bar__fill" style="width:${pctDone}%; background: var(--color-${statusColor === 'amber' ? 'accent-amber' : statusColor})"></div>
+        </div>
+        <div class="concession-queue-card__meta">
+          <span>Est. wait: ~${q.estimatedWait} min</span>
+          ${q.status === 'your_turn' ? '<span style="color:var(--color-green);font-weight:700">Head there now!</span>' :
+            q.status === 'approaching' ? '<span style="color:var(--color-accent-amber);font-weight:700">Start walking!</span>' : ''}
+        </div>
+        ${q.status !== 'your_turn' ? `
+          <button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px" data-leave-concession-queue="${q.id}">Leave Queue</button>
+        ` : ''}
+      </div>
+    `;
+  }
 
   function renderOrderTimeline(order) {
     const steps = ['confirmed', 'preparing', 'ready', 'picked_up'];
@@ -677,13 +1134,29 @@ const AttendeeView = (() => {
           showLabels: false, showUserPosition: true, compact: true, showPitch: true,
         });
       }
-      const fullCanvas = document.getElementById('att-full-heatmap');
-      if (fullCanvas) {
-        HeatmapRenderer.render(fullCanvas, data, {
-          showLabels: true, showUserPosition: true, compact: false, showPitch: true,
-        });
-      }
+
+      renderNavigateCanvases(data);
+      renderARCanvas(data);
     });
+  }
+
+  function renderNavigateCanvases(data) {
+    const wayfindCanvas = document.getElementById('att-wayfinding-map');
+    if (wayfindCanvas) {
+      HeatmapRenderer.render(wayfindCanvas, data, {
+        showLabels: true, showUserPosition: true, compact: false, showPitch: true,
+      });
+      if (activeRoute) {
+        HeatmapRenderer.renderRoute(wayfindCanvas, activeRoute, VenueData.getNavGraph());
+      }
+    }
+  }
+
+  function renderARCanvas(data) {
+    const arCanvas = document.getElementById('att-ar-canvas');
+    if (arCanvas) {
+      HeatmapRenderer.renderAROverlay(arCanvas, data.arOverlay);
+    }
   }
 
   function switchTab(tab) {
@@ -694,8 +1167,31 @@ const AttendeeView = (() => {
     container.querySelectorAll('.tab-content').forEach(el => {
       el.classList.toggle('tab-content--active', el.id === `att-tab-${tab}`);
     });
-    if (tab === 'map') setTimeout(() => renderCanvases(VenueData.getSnapshot()), 100);
+
+    // Cancel AR animation if leaving AR tab
+    if (tab !== 'ar' && arAnimFrame) {
+      cancelAnimationFrame(arAnimFrame);
+      arAnimFrame = null;
+    }
+
+    if (tab === 'navigate') setTimeout(() => renderNavigateCanvases(VenueData.getSnapshot()), 100);
     if (tab === 'services') refreshServices();
+    if (tab === 'ar') startARAnimation();
+    if (tab === 'ticket') {
+      const el = document.getElementById('att-ticket-content');
+      if (el) el.innerHTML = renderTicketTab(VenueData.getSnapshot());
+    }
+  }
+
+  function startARAnimation() {
+    function animateAR() {
+      const arCanvas = document.getElementById('att-ar-canvas');
+      if (arCanvas && currentTab === 'ar') {
+        HeatmapRenderer.renderAROverlay(arCanvas, VenueData.getAROverlayData());
+        arAnimFrame = requestAnimationFrame(animateAR);
+      }
+    }
+    animateAR();
   }
 
   function update(data) {
@@ -708,20 +1204,29 @@ const AttendeeView = (() => {
     if (currentTab === 'home') {
       const el = document.getElementById('att-home-content');
       if (el) el.innerHTML = renderHomeTab(data);
-    } else if (currentTab === 'map') {
-      const el = document.getElementById('att-map-content');
-      if (el) el.innerHTML = renderMapTab(data);
+    } else if (currentTab === 'navigate') {
+      // Don't re-render navigate content to avoid losing selection, just update canvas
+      renderNavigateCanvases(data);
     } else if (currentTab === 'alerts') {
       const el = document.getElementById('att-alerts-content');
       if (el) el.innerHTML = renderAlertsTab(data);
     } else if (currentTab === 'services') {
       refreshServices();
+    } else if (currentTab === 'food') {
+      const el = document.getElementById('att-food-content');
+      if (el) el.innerHTML = renderFoodTab(data);
+    } else if (currentTab === 'ticket') {
+      const el = document.getElementById('att-ticket-content');
+      if (el) el.innerHTML = renderTicketTab(data);
     }
+    // AR tab animates itself
 
     renderCanvases(data);
   }
 
-  function destroy() {}
+  function destroy() {
+    if (arAnimFrame) cancelAnimationFrame(arAnimFrame);
+  }
 
   return { init, update, destroy };
 })();

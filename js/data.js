@@ -338,6 +338,457 @@ const VenueData = (() => {
     restroomQueues = restroomQueues.filter(q => q.id !== queueId);
   }
 
+  // =====================================================
+  //  FEATURE 1: Predictive Wayfinding (Seat-to-Street)
+  //  Graph-based pathfinding with crowd-weighted edges
+  // =====================================================
+
+  // Navigation graph — nodes are zones/POIs, edges are corridors with crowd-weighted costs
+  const navGraph = {
+    nodes: {
+      'user-seat':      { x: 0.38, y: 0.14, label: 'Your Seat', icon: '📍', type: 'seat' },
+      'north-conc':     { x: 0.50, y: 0.03, label: 'North Concourse', icon: '🚶', type: 'concourse' },
+      'south-conc':     { x: 0.50, y: 0.97, label: 'South Concourse', icon: '🚶', type: 'concourse' },
+      'east-conc':      { x: 0.97, y: 0.50, label: 'East Concourse', icon: '🚶', type: 'concourse' },
+      'west-conc':      { x: 0.03, y: 0.50, label: 'West Concourse', icon: '🚶', type: 'concourse' },
+      'ne-junction':    { x: 0.80, y: 0.15, label: 'NE Junction', icon: '↗️', type: 'junction' },
+      'nw-junction':    { x: 0.20, y: 0.15, label: 'NW Junction', icon: '↖️', type: 'junction' },
+      'se-junction':    { x: 0.80, y: 0.85, label: 'SE Junction', icon: '↘️', type: 'junction' },
+      'sw-junction':    { x: 0.20, y: 0.85, label: 'SW Junction', icon: '↙️', type: 'junction' },
+      'gate-a-node':    { x: 0.35, y: 0.02, label: 'Gate A (North)', icon: '🚪', type: 'gate' },
+      'gate-b-node':    { x: 0.98, y: 0.35, label: 'Gate B (East)', icon: '🚪', type: 'gate' },
+      'gate-c-node':    { x: 0.65, y: 0.98, label: 'Gate C (South)', icon: '🚪', type: 'gate' },
+      'gate-d-node':    { x: 0.02, y: 0.65, label: 'Gate D (West)', icon: '🚪', type: 'gate' },
+      'food-n1-node':   { x: 0.35, y: 0.05, label: 'Burger Barn', icon: '🍔', type: 'food' },
+      'food-s1-node':   { x: 0.40, y: 0.95, label: 'Taco Stand', icon: '🌮', type: 'food' },
+      'drink-n1-node':  { x: 0.45, y: 0.04, label: 'Brew House', icon: '🍺', type: 'drink' },
+      'rest-n1-node':   { x: 0.30, y: 0.04, label: 'North Restroom A', icon: '🚻', type: 'restroom' },
+      'rest-e1-node':   { x: 0.96, y: 0.45, label: 'East Restroom', icon: '🚻', type: 'restroom' },
+      'parking-a':      { x: 0.30, y: -0.05, label: 'Parking Lot A', icon: '🅿️', type: 'parking' },
+      'parking-b':      { x: 1.05, y: 0.30, label: 'Parking Lot B', icon: '🅿️', type: 'parking' },
+      'transit-stop':   { x: 0.70, y: -0.05, label: 'Transit Stop', icon: '🚌', type: 'transit' },
+    },
+    // Edges: [from, to, baseDistance] — crowd multiplier applied at runtime
+    edges: [
+      ['user-seat', 'north-conc', 3],
+      ['user-seat', 'nw-junction', 4],
+      ['user-seat', 'ne-junction', 6],
+      ['north-conc', 'gate-a-node', 1],
+      ['north-conc', 'food-n1-node', 0.5],
+      ['north-conc', 'drink-n1-node', 0.5],
+      ['north-conc', 'rest-n1-node', 0.5],
+      ['north-conc', 'ne-junction', 3],
+      ['north-conc', 'nw-junction', 3],
+      ['south-conc', 'gate-c-node', 1],
+      ['south-conc', 'food-s1-node', 0.5],
+      ['south-conc', 'se-junction', 3],
+      ['south-conc', 'sw-junction', 3],
+      ['east-conc', 'gate-b-node', 1],
+      ['east-conc', 'rest-e1-node', 0.5],
+      ['east-conc', 'ne-junction', 3],
+      ['east-conc', 'se-junction', 3],
+      ['west-conc', 'gate-d-node', 1],
+      ['west-conc', 'nw-junction', 3],
+      ['west-conc', 'sw-junction', 3],
+      ['ne-junction', 'se-junction', 5],
+      ['nw-junction', 'sw-junction', 5],
+      ['gate-a-node', 'parking-a', 2],
+      ['gate-a-node', 'transit-stop', 3],
+      ['gate-b-node', 'parking-b', 2],
+      ['gate-c-node', 'transit-stop', 4],
+      ['gate-d-node', 'parking-a', 4],
+    ],
+  };
+
+  // Dijkstra's algorithm with crowd-weighted edges
+  function findFastestRoute(fromId, toId) {
+    const getCrowdMultiplier = (nodeId) => {
+      const zoneMap = {
+        'north-conc': 'north-concourse',
+        'south-conc': 'south-concourse',
+        'east-conc': 'east-concourse',
+        'west-conc': 'west-concourse',
+      };
+      const zoneId = zoneMap[nodeId];
+      if (zoneId) {
+        const zone = zones.find(z => z.id === zoneId);
+        if (zone) return 1 + zone.occupancy * 2; // 1x-3x multiplier
+      }
+      return 1;
+    };
+
+    // Build adjacency list
+    const adj = {};
+    Object.keys(navGraph.nodes).forEach(n => { adj[n] = []; });
+    navGraph.edges.forEach(([a, b, dist]) => {
+      const crowdA = getCrowdMultiplier(a);
+      const crowdB = getCrowdMultiplier(b);
+      const avgCrowd = (crowdA + crowdB) / 2;
+      const weightedDist = dist * avgCrowd;
+      adj[a].push({ to: b, cost: weightedDist, baseDist: dist, crowd: avgCrowd });
+      adj[b].push({ to: a, cost: weightedDist, baseDist: dist, crowd: avgCrowd });
+    });
+
+    // Dijkstra
+    const dist = {};
+    const prev = {};
+    const visited = {};
+    Object.keys(navGraph.nodes).forEach(n => { dist[n] = Infinity; prev[n] = null; });
+    dist[fromId] = 0;
+
+    while (true) {
+      let minNode = null;
+      let minDist = Infinity;
+      Object.keys(dist).forEach(n => {
+        if (!visited[n] && dist[n] < minDist) {
+          minDist = dist[n];
+          minNode = n;
+        }
+      });
+      if (!minNode || minNode === toId) break;
+      visited[minNode] = true;
+
+      (adj[minNode] || []).forEach(edge => {
+        const newDist = dist[minNode] + edge.cost;
+        if (newDist < dist[edge.to]) {
+          dist[edge.to] = newDist;
+          prev[edge.to] = minNode;
+        }
+      });
+    }
+
+    // Reconstruct path
+    const path = [];
+    let node = toId;
+    while (node) {
+      path.unshift(node);
+      node = prev[node];
+    }
+
+    if (path[0] !== fromId) return null; // No route found
+
+    // Build route details
+    const routeSegments = [];
+    let totalWalkMin = 0;
+    let maxCrowdLevel = 0;
+    for (let i = 1; i < path.length; i++) {
+      const edge = adj[path[i - 1]].find(e => e.to === path[i]);
+      if (edge) {
+        routeSegments.push({
+          from: path[i - 1],
+          to: path[i],
+          walkMin: Math.round(edge.baseDist * 1.2),
+          crowdLevel: edge.crowd,
+          crowdLabel: edge.crowd < 1.5 ? 'Low' : edge.crowd < 2.2 ? 'Moderate' : 'High',
+          crowdColor: edge.crowd < 1.5 ? 'green' : edge.crowd < 2.2 ? 'yellow' : 'red',
+        });
+        totalWalkMin += edge.baseDist * 1.2;
+        maxCrowdLevel = Math.max(maxCrowdLevel, edge.crowd);
+      }
+    }
+
+    return {
+      path,
+      segments: routeSegments,
+      totalWalkMin: Math.round(totalWalkMin),
+      totalCrowdWeightedMin: Math.round(dist[toId] * 1.2),
+      maxCrowdLevel,
+      destinationNode: navGraph.nodes[toId],
+      originNode: navGraph.nodes[fromId],
+    };
+  }
+
+  // Also find the shortest (non-crowd-weighted) route for comparison
+  function findShortestRoute(fromId, toId) {
+    const adj = {};
+    Object.keys(navGraph.nodes).forEach(n => { adj[n] = []; });
+    navGraph.edges.forEach(([a, b, dist]) => {
+      adj[a].push({ to: b, cost: dist });
+      adj[b].push({ to: a, cost: dist });
+    });
+
+    const distMap = {};
+    const prev = {};
+    const visited = {};
+    Object.keys(navGraph.nodes).forEach(n => { distMap[n] = Infinity; prev[n] = null; });
+    distMap[fromId] = 0;
+
+    while (true) {
+      let minNode = null;
+      let minDist = Infinity;
+      Object.keys(distMap).forEach(n => {
+        if (!visited[n] && distMap[n] < minDist) {
+          minDist = distMap[n];
+          minNode = n;
+        }
+      });
+      if (!minNode || minNode === toId) break;
+      visited[minNode] = true;
+      (adj[minNode] || []).forEach(edge => {
+        const newDist = distMap[minNode] + edge.cost;
+        if (newDist < distMap[edge.to]) {
+          distMap[edge.to] = newDist;
+          prev[edge.to] = minNode;
+        }
+      });
+    }
+
+    const path = [];
+    let n = toId;
+    while (n) { path.unshift(n); n = prev[n]; }
+    return { path, totalMin: Math.round(distMap[toId] * 1.2) };
+  }
+
+  function getWayfindingDestinations() {
+    return Object.entries(navGraph.nodes)
+      .filter(([id]) => id !== 'user-seat')
+      .map(([id, node]) => ({
+        id,
+        ...node,
+        route: findFastestRoute('user-seat', id),
+        shortestRoute: findShortestRoute('user-seat', id),
+      }))
+      .filter(d => d.route !== null);
+  }
+
+  function getNavGraph() {
+    return navGraph;
+  }
+
+  // =====================================================
+  //  FEATURE 2: Virtual Concession Queuing
+  //  Digital queue for food stands with 2-min alert
+  // =====================================================
+
+  let concessionQueues = [];
+
+  function joinConcessionQueue(concessionId) {
+    const stand = concessions.find(c => c.id === concessionId);
+    if (!stand) return null;
+
+    // Check if already in queue
+    if (concessionQueues.find(q => q.concessionId === concessionId && q.status !== 'completed' && q.status !== 'served')) return null;
+
+    const estimatedTotal = stand.waitTime;
+    const position = Math.max(1, Math.floor(stand.waitTime / 1.5));
+
+    const entry = {
+      id: `CQ-${Date.now()}`,
+      concessionId,
+      concessionName: stand.name,
+      concessionIcon: stand.icon,
+      location: stand.zone.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      position,
+      startPosition: position,
+      estimatedWait: estimatedTotal,
+      estimatedServeTime: Date.now() + estimatedTotal * 60 * 1000,
+      joinedAt: Date.now(),
+      status: 'queued', // queued, approaching, your_turn, served
+      twoMinAlertSent: false,
+      headThereAlertSent: false,
+    };
+
+    concessionQueues.push(entry);
+
+    // Auto-advance queue
+    const advanceInterval = setInterval(() => {
+      if (entry.status === 'completed' || entry.status === 'served') {
+        clearInterval(advanceInterval);
+        return;
+      }
+
+      if (entry.position > 1) {
+        entry.position--;
+        entry.estimatedWait = Math.max(0, Math.ceil(entry.position * 1.5));
+
+        // 2-minute warning notification
+        if (entry.estimatedWait <= 2 && !entry.twoMinAlertSent) {
+          entry.twoMinAlertSent = true;
+          entry.status = 'approaching';
+          addNotification(
+            `⏰ 2 min away! Head to ${stand.name}`,
+            `You're almost up! Start walking to ${entry.location} now.`,
+            'queue'
+          );
+        }
+      } else if (entry.position <= 1 && entry.status !== 'your_turn' && entry.status !== 'served') {
+        entry.status = 'your_turn';
+        entry.position = 0;
+        entry.estimatedWait = 0;
+        if (!entry.headThereAlertSent) {
+          entry.headThereAlertSent = true;
+          addNotification(
+            `🔔 Your turn at ${stand.name}!`,
+            `Step up to the counter at ${entry.location}. Your order is next!`,
+            'queue'
+          );
+        }
+        setTimeout(() => {
+          entry.status = 'served';
+          clearInterval(advanceInterval);
+        }, 12000);
+      }
+    }, 3500);
+
+    addNotification(
+      `🍔 Joined queue: ${stand.name}`,
+      `Position #${position} · Est. wait ~${estimatedTotal} min. We'll alert you when it's time!`,
+      'queue'
+    );
+
+    return entry;
+  }
+
+  function leaveConcessionQueue(queueId) {
+    const q = concessionQueues.find(q => q.id === queueId);
+    if (q) q.status = 'completed';
+    concessionQueues = concessionQueues.filter(q => q.id !== queueId || q.status === 'completed');
+  }
+
+  // =====================================================
+  //  FEATURE 3: AR Safety Overlays
+  //  Simulated friend positions and traffic overlay
+  // =====================================================
+
+  const arFriends = [
+    { id: 'friend-1', name: 'Alex', avatar: '👤', section: 'North Stand', seat: 'Sec 108, Row C', x: 0.42, y: 0.10, status: 'in-seat', distance: 12, emoji: '😄' },
+    { id: 'friend-2', name: 'Sam', avatar: '👤', section: 'East Concourse', seat: 'Getting food', x: 0.93, y: 0.42, status: 'concourse', distance: 85, emoji: '🍕' },
+    { id: 'friend-3', name: 'Jordan', avatar: '👤', section: 'South Stand', seat: 'Sec 305, Row J', x: 0.55, y: 0.86, status: 'in-seat', distance: 140, emoji: '🎉' },
+    { id: 'friend-4', name: 'Taylor', avatar: '👤', section: 'Gate A Area', seat: 'Just arrived', x: 0.36, y: 0.03, status: 'arriving', distance: 45, emoji: '👋' },
+  ];
+
+  const arTrafficZones = [
+    { id: 'ar-north', area: 'North Concourse', level: 'moderate', x: 0.50, y: 0.04, radius: 0.15, tips: 'Moderate traffic — try East route' },
+    { id: 'ar-south', area: 'South Concourse', level: 'high', x: 0.50, y: 0.96, radius: 0.15, tips: 'Heavy traffic — halftime rush' },
+    { id: 'ar-east', area: 'East Concourse', level: 'low', x: 0.96, y: 0.50, radius: 0.12, tips: 'Clear path — fastest route' },
+    { id: 'ar-west', area: 'West Concourse', level: 'moderate', x: 0.04, y: 0.50, radius: 0.12, tips: 'Some congestion near Gate D' },
+  ];
+
+  function getAROverlayData() {
+    // Update traffic levels based on real zone occupancy
+    const updatedTraffic = arTrafficZones.map(tz => {
+      const zoneMap = { 'ar-north': 'north-concourse', 'ar-south': 'south-concourse', 'ar-east': 'east-concourse', 'ar-west': 'west-concourse' };
+      const zone = zones.find(z => z.id === zoneMap[tz.id]);
+      const occ = zone ? zone.occupancy : 0.5;
+      return {
+        ...tz,
+        level: occ > 0.7 ? 'high' : occ > 0.4 ? 'moderate' : 'low',
+        occupancy: occ,
+        tips: occ > 0.7 ? `⚠️ Heavy traffic (${Math.round(occ * 100)}%)` :
+              occ > 0.4 ? `🟡 Moderate (${Math.round(occ * 100)}%)` :
+              `✅ Clear path (${Math.round(occ * 100)}%)`,
+      };
+    });
+
+    // Simulate friend movement
+    arFriends.forEach(f => {
+      f.x += (Math.random() - 0.5) * 0.005;
+      f.y += (Math.random() - 0.5) * 0.005;
+      f.x = Math.max(0.02, Math.min(0.98, f.x));
+      f.y = Math.max(0.02, Math.min(0.98, f.y));
+    });
+
+    return {
+      friends: arFriends.map(f => ({ ...f })),
+      trafficZones: updatedTraffic,
+      safetyAlerts: [
+        { type: 'exit', label: 'Nearest Exit', direction: 'North — Gate A', distance: '45m', icon: '🚪' },
+        { type: 'medical', label: 'First Aid', direction: 'West Concourse', distance: '60m', icon: '🏥' },
+        { type: 'info', label: 'Info Desk', direction: 'North Concourse', distance: '30m', icon: 'ℹ️' },
+      ],
+    };
+  }
+
+  // =====================================================
+  //  FEATURE 4: Smart Ingress/Egress
+  //  Geo-fenced gate assignment + staggered exit windows
+  // =====================================================
+
+  const digitalTicket = {
+    id: 'TKT-2024-58420',
+    barcode: '▊▋▌▍▎▊▋▌▍▎▊▋▌▊▋▌▍▎▊▋',
+    section: 'Section 112',
+    row: 'Row F',
+    seat: 'Seat 14',
+    gate: 'Gate A',
+    entryTime: null,
+    scanStatus: 'valid', // valid, scanned, expired
+  };
+
+  // Geo-fence zones (simulated GPS regions)
+  const geoFences = [
+    { id: 'geo-north', gate: 'Gate A', label: 'North Approach', center: { lat: 51.556, lng: -0.280 }, radiusM: 200, assignedSections: ['Section 101-115'], crowd: 0 },
+    { id: 'geo-east', gate: 'Gate B', label: 'East Approach', center: { lat: 51.554, lng: -0.276 }, radiusM: 200, assignedSections: ['Section 201-215'], crowd: 0 },
+    { id: 'geo-south', gate: 'Gate C', label: 'South Approach', center: { lat: 51.552, lng: -0.280 }, radiusM: 200, assignedSections: ['Section 301-315'], crowd: 0 },
+    { id: 'geo-west', gate: 'Gate D', label: 'West Approach', center: { lat: 51.554, lng: -0.284 }, radiusM: 200, assignedSections: ['Section 401-415'], crowd: 0 },
+  ];
+
+  // Exit windows — staggered departure times
+  let exitWindows = [];
+  function generateExitWindows() {
+    const now = new Date();
+    const windows = [];
+    const waves = [
+      { label: 'Wave 1 — Priority', sections: 'Sec 101-108, 401-408', offset: 0, capacity: 8000, assigned: 0, status: 'upcoming', color: 'green' },
+      { label: 'Wave 2 — East/South', sections: 'Sec 201-215, 301-308', offset: 5, capacity: 12000, assigned: 0, status: 'upcoming', color: 'blue' },
+      { label: 'Wave 3 — North/West', sections: 'Sec 109-115, 409-415', offset: 10, capacity: 12000, assigned: 0, status: 'upcoming', color: 'amber' },
+      { label: 'Wave 4 — Upper Tiers', sections: 'Sec 501-520', offset: 15, capacity: 14000, assigned: 0, status: 'upcoming', color: 'purple' },
+      { label: 'Wave 5 — General', sections: 'All remaining', offset: 20, capacity: 16000, assigned: 0, status: 'upcoming', color: 'yellow' },
+    ];
+
+    waves.forEach((wave, i) => {
+      const departTime = new Date(now.getTime() + wave.offset * 60000);
+      windows.push({
+        id: `exit-wave-${i + 1}`,
+        ...wave,
+        departureTime: departTime.toISOString(),
+        departureDisplay: departTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        assigned: Math.floor(Math.random() * wave.capacity * 0.6),
+        estimatedClearTime: `${wave.offset + 8} min`,
+        recommendedGate: ['Gate A', 'Gate B & C', 'Gate A & D', 'Gate B & C', 'All Gates'][i],
+      });
+    });
+    exitWindows = windows;
+  }
+  generateExitWindows();
+
+  // User's exit assignment
+  const userExitAssignment = {
+    wave: 'Wave 1 — Priority',
+    waveId: 'exit-wave-1',
+    gate: 'Gate A',
+    estimatedDepartTime: exitWindows[0]?.departureDisplay || '—',
+    estimatedExitDuration: '8 min',
+    status: 'assigned', // assigned, active, completed
+  };
+
+  // Gate throughput tracking
+  const gateThroughput = {
+    'gate-a': { throughput: 120, queueLength: 45, waitMin: 3, status: 'normal' },
+    'gate-b': { throughput: 95, queueLength: 22, waitMin: 2, status: 'normal' },
+    'gate-c': { throughput: 110, queueLength: 38, waitMin: 3, status: 'normal' },
+    'gate-d': { throughput: 80, queueLength: 12, waitMin: 1, status: 'optimal' },
+  };
+
+  // Update gate throughput during ticks
+  function updateGateThroughput() {
+    const isEgress = match.status === 'FULL_TIME';
+    Object.entries(gateThroughput).forEach(([gateId, gt]) => {
+      const delta = Math.floor((Math.random() - 0.5) * 20);
+      gt.throughput = Math.max(40, Math.min(180, gt.throughput + delta));
+      gt.queueLength = Math.max(0, gt.queueLength + Math.floor((Math.random() - 0.4) * 8));
+      if (isEgress) gt.queueLength += 15;
+      gt.waitMin = Math.max(1, Math.round(gt.queueLength / Math.max(1, gt.throughput / 60)));
+      gt.status = gt.waitMin <= 2 ? 'optimal' : gt.waitMin <= 5 ? 'normal' : 'congested';
+    });
+
+    // Update geo-fence crowd counts
+    geoFences.forEach(gf => {
+      gf.crowd = Math.max(0, gf.crowd + Math.floor((Math.random() - 0.45) * 50));
+      if (isEgress) gf.crowd += 100;
+    });
+  }
+
   function getNearestRestroom() {
     // Find nearest under-utilized restroom based on user position
     return [...restrooms]
@@ -507,6 +958,9 @@ const VenueData = (() => {
     // Satisfaction fluctuation
     satisfaction = Math.max(6.0, Math.min(9.8, satisfaction + (Math.random() - 0.48) * 0.15));
 
+    // Update gate throughput (Feature 4)
+    updateGateThroughput();
+
     emit();
   }
 
@@ -565,6 +1019,16 @@ const VenueData = (() => {
       userPosition: { ...userPosition },
       staff: JSON.parse(JSON.stringify(staff)),
       satisfaction,
+      // Feature 2: Concession Queues
+      concessionQueues: concessionQueues.filter(q => q.status !== 'completed').map(q => ({ ...q })),
+      // Feature 3: AR Overlays
+      arOverlay: getAROverlayData(),
+      // Feature 4: Smart Ingress/Egress
+      digitalTicket: { ...digitalTicket },
+      exitWindows: exitWindows.map(w => ({ ...w })),
+      userExitAssignment: { ...userExitAssignment },
+      gateThroughput: JSON.parse(JSON.stringify(gateThroughput)),
+      geoFences: geoFences.map(g => ({ ...g, center: { ...g.center } })),
     };
   }
 
@@ -711,5 +1175,15 @@ const VenueData = (() => {
     applyApiMatchData,
     applyApiWeatherData,
     applyApiCrowdData,
+    // Feature 1: Predictive Wayfinding
+    findFastestRoute,
+    findShortestRoute,
+    getWayfindingDestinations,
+    getNavGraph,
+    // Feature 2: Virtual Concession Queuing
+    joinConcessionQueue,
+    leaveConcessionQueue,
+    // Feature 3: AR Overlays
+    getAROverlayData,
   };
 })();

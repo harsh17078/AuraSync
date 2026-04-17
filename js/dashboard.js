@@ -131,6 +131,32 @@ const DashboardView = (() => {
             </div>
           </div>
         </div>
+
+        <!-- Gate Throughput Monitor (Feature 4: Smart Ingress/Egress) -->
+        <div class="dash-grid" style="margin-top:0">
+          <div class="dash-panel dash-grid__full">
+            <div class="dash-panel__header">
+              <div class="dash-panel__title">🚪 Gate Throughput Monitor</div>
+              <span class="badge badge--blue"><span class="live-dot" style="width:6px;height:6px;margin-right:4px"></span> Live</span>
+            </div>
+            <div class="dash-panel__body">
+              <div id="dash-gate-monitor">${renderGateMonitor(data)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exit Wave Management -->
+        <div class="dash-grid" style="margin-top:0">
+          <div class="dash-panel dash-grid__full">
+            <div class="dash-panel__header">
+              <div class="dash-panel__title">🚶 Staggered Exit Management</div>
+              <span class="badge badge--purple">Anti-bottleneck</span>
+            </div>
+            <div class="dash-panel__body">
+              <div id="dash-exit-waves">${renderExitWaves(data)}</div>
+            </div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -345,6 +371,82 @@ const DashboardView = (() => {
     });
   }
 
+  // =====================================================
+  //  Gate Throughput & Exit Wave Renderers
+  // =====================================================
+
+  function renderGateMonitor(data) {
+    const gates = data.gateThroughput;
+    if (!gates) return '';
+    return `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-sm)">
+        ${Object.entries(gates).map(([gateId, gt]) => {
+          const gateName = gateId.replace('gate-', 'Gate ').replace(/\b\w/g, c => c.toUpperCase());
+          const statusColor = gt.status === 'optimal' ? 'green' : gt.status === 'normal' ? 'yellow' : 'red';
+          return `
+            <div class="zone-card ${gt.status === 'congested' ? 'zone-card--critical' : gt.status === 'normal' ? 'zone-card--warning' : ''}">
+              <div class="zone-card__header">
+                <span class="zone-card__name">🚪 ${gateName}</span>
+                <span class="badge badge--${statusColor}" style="font-size:8px">${gt.status}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;margin:8px 0">
+                <div>
+                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-${statusColor})">${gt.waitMin}</div>
+                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase">Wait</div>
+                </div>
+                <div>
+                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-text-primary)">${gt.queueLength}</div>
+                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase">Queue</div>
+                </div>
+                <div>
+                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-text-primary)">${gt.throughput}</div>
+                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase">PPL/min</div>
+                </div>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-bar__fill" style="width:${Math.min(100, gt.queueLength / 1.2)}%; background:var(--color-${statusColor})"></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function renderExitWaves(data) {
+    const waves = data.exitWindows;
+    if (!waves || waves.length === 0) return '<p style="color:var(--color-text-muted);font-size:var(--text-sm)">Exit waves will appear at match end.</p>';
+    return `
+      <div style="display:flex;flex-direction:column;gap:var(--space-sm)">
+        ${waves.map(w => {
+          const fillPct = Math.round((w.assigned / w.capacity) * 100);
+          return `
+            <div style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-sm) var(--space-md);background:var(--color-bg-elevated);border-radius:var(--radius-md)">
+              <div style="width:12px;height:12px;border-radius:50%;background:var(--color-${w.color});flex-shrink:0"></div>
+              <div style="flex:1">
+                <div style="font-size:var(--text-sm);font-weight:700;color:var(--color-text-primary)">${w.label}</div>
+                <div style="font-size:var(--text-xs);color:var(--color-text-muted)">${w.sections}</div>
+              </div>
+              <div style="text-align:center;min-width:60px">
+                <div style="font-family:var(--font-heading);font-size:var(--text-base);font-weight:800;color:var(--color-accent-blue)">${w.departureDisplay}</div>
+                <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase">Depart</div>
+              </div>
+              <div style="flex:1;max-width:120px">
+                <div class="progress-bar">
+                  <div class="progress-bar__fill" style="width:${fillPct}%; background:var(--color-${w.color})"></div>
+                </div>
+                <div style="font-size:8px;color:var(--color-text-muted);margin-top:2px">${w.assigned.toLocaleString()} / ${w.capacity.toLocaleString()}</div>
+              </div>
+              <div style="min-width:50px;text-align:right">
+                <div style="font-size:var(--text-xs);font-weight:700;color:var(--color-text-secondary)">${w.recommendedGate}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   function update(data) {
     if (!container) return;
 
@@ -374,6 +476,13 @@ const DashboardView = (() => {
 
     const staffBar = document.getElementById('dash-staff-bar');
     if (staffBar) staffBar.style.width = `${Math.round(data.staff.deployed/data.staff.total*100)}%`;
+
+    // Gate Throughput (Feature 4)
+    const gateMon = document.getElementById('dash-gate-monitor');
+    if (gateMon) gateMon.innerHTML = renderGateMonitor(data);
+
+    const exitWaves = document.getElementById('dash-exit-waves');
+    if (exitWaves) exitWaves.innerHTML = renderExitWaves(data);
 
     renderCharts(data);
   }

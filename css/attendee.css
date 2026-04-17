@@ -1200,3 +1200,657 @@
 .notif-card--order { border-left: 3px solid var(--color-green); }
 .notif-card--queue { border-left: 3px solid var(--color-accent-purple); }
 .notif-card--reservation { border-left: 3px solid var(--color-accent-purple); }
+
+/* ============================================================
+   FEATURE 1: Predictive Wayfinding
+   ============================================================ */
+
+.active-route-card {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(0, 102, 255, 0.04));
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  animation: fadeInUp var(--transition-slow) ease both;
+}
+
+.active-route-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.active-route-card__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.active-route-card__subtitle {
+  font-size: var(--text-xs);
+  color: var(--color-accent-blue);
+  font-weight: 600;
+}
+
+.active-route-card__time {
+  font-family: var(--font-heading);
+  font-size: var(--text-3xl);
+  font-weight: 800;
+  color: var(--color-accent-blue);
+  line-height: 1;
+}
+
+.active-route-card__segments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.route-segment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+}
+
+.route-segment__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.route-segment__dot--green { background: var(--color-green); }
+.route-segment__dot--yellow { background: var(--color-yellow); }
+.route-segment__dot--red { background: var(--color-red); }
+
+.route-segment__info {
+  flex: 1;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.route-segment__from, .route-segment__to {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.route-segment__arrow {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.route-segment__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.route-segment__walk {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.crowd-badge {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.crowd-badge--green { background: var(--color-green-dim); color: var(--color-green); }
+.crowd-badge--yellow { background: var(--color-yellow-dim); color: var(--color-yellow); }
+.crowd-badge--red { background: var(--color-red-dim); color: var(--color-red); }
+
+.crowd-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.crowd-dot--green { background: var(--color-green); }
+.crowd-dot--yellow { background: var(--color-yellow); }
+.crowd-dot--red { background: var(--color-red); }
+
+.route-card--selected {
+  border-color: var(--color-accent-blue) !important;
+  box-shadow: var(--shadow-glow-blue);
+}
+
+/* ============================================================
+   FEATURE 2: Virtual Concession Queuing
+   ============================================================ */
+
+.concession-queue-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.concession-queue-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.concession-queue-item:hover {
+  border-color: var(--color-border-hover);
+}
+
+.concession-queue-item__info {
+  flex: 1;
+}
+
+.concession-queue-item__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.concession-queue-item__wait {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.concession-queue-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  animation: fadeInUp var(--transition-slow) ease both;
+  position: relative;
+  overflow: hidden;
+}
+
+.concession-queue-card--approaching {
+  border-color: rgba(234, 179, 8, 0.4);
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.1);
+}
+
+.concession-queue-card--your_turn {
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
+  animation: countPulse 2s ease infinite;
+}
+
+.concession-queue-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.concession-queue-card__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.concession-queue-card__location {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.concession-queue-card__status {
+  margin-left: auto;
+}
+
+.concession-queue-card__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================
+   FEATURE 3: AR Safety Overlays
+   ============================================================ */
+
+.ar-viewport {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  margin-bottom: var(--space-md);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+}
+
+.ar-canvas {
+  width: 100%;
+  height: 350px;
+  display: block;
+}
+
+.ar-viewport__badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-accent-blue);
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.safety-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.safety-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(239, 68, 68, 0.02));
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.safety-card:hover {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.safety-card__icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.safety-card__info {
+  flex: 1;
+}
+
+.safety-card__label {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.safety-card__direction {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.safety-card__distance {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--color-accent-blue);
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.friend-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.friend-card:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+}
+
+.friend-card__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-accent-blue-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.friend-card__info {
+  flex: 1;
+}
+
+.friend-card__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.friend-card__location {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.friend-card__distance {
+  text-align: right;
+}
+
+.friend-card__distance-num {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: 800;
+  color: var(--color-accent-blue);
+  display: block;
+}
+
+.friend-card__status {
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.friend-card__status--in-seat { background: var(--color-green-dim); color: var(--color-green); }
+.friend-card__status--concourse { background: var(--color-accent-amber-dim); color: var(--color-accent-amber); }
+.friend-card__status--arriving { background: var(--color-accent-blue-dim); color: var(--color-accent-blue); }
+
+.traffic-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.traffic-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.traffic-card--green::before { background: var(--color-green); }
+.traffic-card--yellow::before { background: var(--color-yellow); }
+.traffic-card--red::before { background: var(--color-red); }
+
+.traffic-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+
+.traffic-card__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.traffic-card__tip {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+/* ============================================================
+   FEATURE 4: Smart Ingress/Egress — Digital Ticket
+   ============================================================ */
+
+.digital-ticket {
+  background: linear-gradient(145deg, #1a1f35, #0f1322);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.digital-ticket::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--gradient-blue);
+}
+
+.digital-ticket::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20px; right: 20px;
+  height: 1px;
+  border-bottom: 2px dashed rgba(148, 163, 184, 0.15);
+}
+
+.digital-ticket__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+}
+
+.digital-ticket__event-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.digital-ticket__venue {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.digital-ticket__id {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.digital-ticket__details {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.digital-ticket__detail {
+  text-align: center;
+}
+
+.digital-ticket__detail-label {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.digital-ticket__detail-value {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.digital-ticket__barcode {
+  text-align: center;
+  font-size: 28px;
+  letter-spacing: -2px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1;
+  margin-bottom: var(--space-xs);
+  font-family: monospace;
+  overflow: hidden;
+}
+
+.digital-ticket__barcode-label {
+  text-align: center;
+  font-size: 9px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Gate Throughput Cards */
+.gate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.gate-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  transition: all var(--transition-base);
+}
+
+.gate-card--assigned {
+  border-color: rgba(0, 212, 255, 0.3);
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.08);
+}
+
+.gate-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.gate-card__name {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.gate-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xs);
+  text-align: center;
+}
+
+.gate-card__metric-value {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.gate-card__metric-label {
+  font-size: 8px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* Exit Wave Timeline */
+.exit-wave {
+  background: var(--gradient-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+  position: relative;
+  transition: all var(--transition-base);
+}
+
+.exit-wave--active {
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.08);
+}
+
+.exit-wave__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.exit-wave__label {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.exit-wave__sections {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.exit-wave__time {
+  text-align: right;
+}
+
+.exit-wave__depart {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: 800;
+  color: var(--color-accent-blue);
+}
+
+.exit-wave__gate {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.exit-wave__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.exit-wave__you {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-green);
+  margin-top: var(--space-xs);
+  text-align: center;
+}
