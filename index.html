@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="VenueFlow — Smart Venue Experience Platform for real-time crowd intelligence, wait time optimization, and seamless event coordination at large-scale sporting venues.">
-  <title>VenueFlow — Smart Venue Experience Platform</title>
+  <meta name="description" content="Insight-X — Smart Venue Experience Platform for real-time crowd intelligence, wait time optimization, and seamless event coordination at large-scale sporting venues.">
+  <title>Insight-X — Smart Venue Experience Platform</title>
 
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/global.css">
@@ -21,7 +21,7 @@
     <!-- Logo -->
     <div class="app-header__logo">
       <span style="font-size:24px">⚡</span>
-      <span class="app-header__brand">VenueFlow</span>
+      <span class="app-header__brand">Insight-X</span>
       <span class="app-header__sync">● APP SYNC ACTIVE</span>
     </div>
 
@@ -35,21 +35,57 @@
       </button>
     </div>
 
-    <!-- Right side: API status + Settings -->
+    <!-- Right side: Broadcast Status -->
     <div class="app-header__right">
       <span id="api-status-indicator">
-        <span class="badge badge--yellow">🔄 Simulated</span>
+        <span class="badge badge--blue" aria-label="Live Broadcast Status" title="Live Broadcast">
+          <span class="live-dot" style="width:6px;height:6px;margin-right:4px"></span> LIVE
+        </span>
       </span>
-      <button class="btn btn-ghost btn-sm" id="settings-btn" title="API Settings" style="font-size:16px;padding:4px 8px">
-        ⚙️
-      </button>
     </div>
   </header>
 
-  <!-- ===== Settings Modal ===== -->
-  <div class="settings-modal-overlay" id="settings-modal-overlay">
-    <div class="settings-modal" id="settings-modal-content">
-      <!-- Content injected by app.js -->
+  <!-- ===== Return Home Modal ===== -->
+  <div class="settings-modal-overlay" id="return-home-overlay" aria-hidden="true" role="dialog" aria-labelledby="return-home-title">
+    <div class="settings-modal" id="return-home-modal-content">
+      <div class="settings-header">
+        <h3 id="return-home-title" style="font-family:var(--font-heading);display:flex;align-items:center;gap:8px">
+          🚗 Return Home
+        </h3>
+        <button class="btn btn-ghost" id="return-home-close" style="font-size:20px;padding:4px 8px" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="settings-body">
+        <p class="settings-section__desc" style="margin-top:0">Book a ride to leave the venue securely.</p>
+        
+        <div class="settings-field">
+          <label class="settings-label" for="pickup-loc">Pickup Location</label>
+          <input type="text" class="settings-input" id="pickup-loc" value="Insight-X Stadium" disabled aria-label="Pickup Location">
+        </div>
+        
+        <div class="settings-field">
+          <label class="settings-label" for="dest-loc">Destination Address</label>
+          <input type="text" class="settings-input" id="dest-loc" placeholder="Where to?" aria-label="Destination Address">
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:20px">
+          <button class="btn btn-secondary" id="btn-uber" style="display:flex;align-items:center;justify-content:space-between;width:100%;height:52px;border:1px solid #000;background:#000;color:#fff" aria-label="Book with Uber">
+            <span style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:20px">Uber</span>
+              <span style="font-size:12px;opacity:0.8">Get a ride</span>
+            </span>
+            <span>➔</span>
+          </button>
+          
+          <button class="btn btn-secondary" id="btn-ola" style="display:flex;align-items:center;justify-content:space-between;width:100%;height:52px;border:1px solid #DDF93C;background:#DDF93C;color:#000" aria-label="Book with Ola">
+            <span style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:20px;font-weight:700">Ola</span>
+              <span style="font-size:12px;opacity:0.8">Book a cab</span>
+            </span>
+            <span>➔</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

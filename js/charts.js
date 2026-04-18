@@ -1,5 +1,5 @@
 /* ============================================================
-   VenueFlow — Lightweight Canvas Charts
+   Insight-X — Lightweight Canvas Charts
    ============================================================ */
 
 const Charts = (() => {

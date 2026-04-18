@@ -1,5 +1,5 @@
 /* ============================================================
-   VenueFlow Attendee — Desktop + Mobile Layout
+   Insight-X Attendee — Desktop + Mobile Layout
    Reference: YelloveOS-style full-width dashboard
    ============================================================ */
 
@@ -43,17 +43,17 @@
 }
 
 .vf-broadcast__text {
+  display: inline-block;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  animation: marquee 25s linear infinite;
+  animation: marquee 20s linear infinite;
+  padding-left: 100%;
 }
 
 @keyframes marquee {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  100% { transform: translateX(-100%); }
 }
 
 /* ---- Panels ---- */
@@ -232,8 +232,7 @@
 .vf-map-overlay__cap { color: var(--color-text-muted); }
 
 .vf-active-route-bar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;

@@ -1,5 +1,5 @@
 /* ============================================================
-   VenueFlow — Real-Time API Integration Layer
+   Insight-X — Real-Time API Integration Layer
    ============================================================
    Connects to real APIs for live match data and weather.
    Falls back gracefully to simulated data when API keys
@@ -103,7 +103,7 @@ const ApiService = (() => {
 
       return null; // No matches today
     } catch (err) {
-      console.warn('[VenueFlow API] Football-Data error:', err.message);
+      console.warn('[Insight-X API] Football-Data error:', err.message);
       status.football = { connected: false, lastUpdate: null, error: err.message };
       emitStatus();
       return null;
@@ -193,7 +193,7 @@ const ApiService = (() => {
         apiSource: 'openweathermap.org',
       };
     } catch (err) {
-      console.warn('[VenueFlow API] Weather error:', err.message);
+      console.warn('[Insight-X API] Weather error:', err.message);
       status.weather = { connected: false, lastUpdate: null, error: err.message };
       emitStatus();
       return null;
@@ -296,7 +296,7 @@ const ApiService = (() => {
 
       return transformCrowdData(data);
     } catch (err) {
-      console.warn('[VenueFlow API] Crowd API error:', err.message);
+      console.warn('[Insight-X API] Crowd API error:', err.message);
       status.crowd = { connected: false, lastUpdate: null, error: err.message };
       emitStatus();
       return null;

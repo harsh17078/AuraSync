@@ -1,5 +1,5 @@
 /* ============================================================
-   VenueFlow — Attendee View Controller (Desktop + Mobile)
+   Insight-X — Attendee View Controller (Desktop + Mobile)
    Reference: YelloveOS-style full-width dashboard layout
    ============================================================ */
 
@@ -29,8 +29,10 @@ const AttendeeView = (() => {
       <div class="vf" id="att-root">
         <!-- Broadcast Banner -->
         <div class="vf-broadcast" id="vf-broadcast">
-          <span class="vf-broadcast__tag">BROADCAST</span>
-          <span class="vf-broadcast__text" id="vf-broadcast-text">${data.broadcasts[0]?.text || ''}</span>
+          <span class="vf-broadcast__tag" style="position: relative; z-index: 2;">BROADCAST</span>
+          <div style="flex: 1; overflow: hidden; position: relative; display: flex;">
+            <span class="vf-broadcast__text" id="vf-broadcast-text">${data.broadcasts[0]?.text || ''}</span>
+          </div>
         </div>
 
         <!-- Pickup / Queue Alert Banners -->
@@ -51,22 +53,17 @@ const AttendeeView = (() => {
             </div>
 
             <!-- Section Tabs: Navigation | Queue Telemetry | AR | Ticket -->
-            <div class="vf-tabs" id="vf-panel-tabs">
-              <button class="vf-tab vf-tab--active" data-panel="navigation">🧭 Navigation</button>
-              <button class="vf-tab" data-panel="queues">🔢 Queue Telemetry</button>
-              <button class="vf-tab" data-panel="ar">📡 AR Safety</button>
-              <button class="vf-tab" data-panel="ticket">🎫 Ticket & Exit</button>
+            <div class="vf-tabs" id="vf-panel-tabs" role="tablist">
+              <button class="vf-tab vf-tab--active" data-panel="navigation" role="tab" aria-label="Open Navigation Panel">🧭 Navigation</button>
+              <button class="vf-tab" data-panel="queues" role="tab" aria-label="Open Queue Telemetry Panel">🔢 Queue Telemetry</button>
+              <button class="vf-tab" data-panel="ar" role="tab" aria-label="Open AR Safety Panel">📡 AR Safety</button>
+              <button class="vf-tab" data-panel="ticket" role="tab" aria-label="Open Ticket and Exit Panel">🎫 Ticket & Exit</button>
             </div>
 
             <!-- Navigation Panel -->
             <div class="vf-section vf-section--active" id="vf-panel-navigation">
               <div class="vf-nav-split">
                 <div class="vf-nav-map">
-                  <canvas class="vf-map-canvas" id="att-main-heatmap"></canvas>
-                  <div class="vf-map-overlay">
-                    <span class="vf-map-overlay__seat">📍 ${data.userPosition.seat}</span>
-                    <span class="vf-map-overlay__cap">${Math.round(data.match.attendance / data.match.capacity * 100)}% capacity</span>
-                  </div>
                   ${activeRoute ? `
                     <div class="vf-active-route-bar">
                       <span class="vf-active-route-bar__icon">✅</span>
@@ -74,6 +71,11 @@ const AttendeeView = (() => {
                       <span class="vf-active-route-bar__sub">Route optimized using real-time crowd density and walking navigation</span>
                     </div>
                   ` : ''}
+                  <canvas class="vf-map-canvas" id="att-main-heatmap"></canvas>
+                  <div class="vf-map-overlay">
+                    <span class="vf-map-overlay__seat">📍 ${data.userPosition.seat}</span>
+                    <span class="vf-map-overlay__cap">${Math.round(data.match.attendance / data.match.capacity * 100)}% capacity</span>
+                  </div>
                 </div>
                 <div class="vf-nav-dests" id="vf-nav-dests">${renderDestinations(data)}</div>
               </div>
@@ -240,15 +242,33 @@ const AttendeeView = (() => {
         return;
       }
 
-      // Quick actions
+      // Quick actions & SDE Cards
       const qaBtn = e.target.closest('[data-qa]');
       if (qaBtn) {
         e.preventDefault();
         const action = qaBtn.dataset.qa;
+        const destId = qaBtn.dataset.destId;
+
         if (action === 'food') switchPanel('queues');
-        else if (action === 'entry') switchPanel('ticket');
-        else if (action === 'emergency') switchPanel('navigation');
-        else if (action === 'home') switchPanel('navigation');
+        else if (action === 'emergency' || action === 'entry') {
+          if (destId && destId !== 'undefined' && destId !== 'null') {
+            activeRoute = VenueData.findFastestRoute('user-seat', destId);
+            selectedWayfindingDest = destId;
+          } else {
+            activeRoute = null;
+            selectedWayfindingDest = null;
+          }
+          refreshPanel('navigation');
+          switchPanel('navigation');
+        }
+        else if (action === 'home') {
+          const overlay = document.getElementById('return-home-overlay');
+          if (overlay) {
+            overlay.classList.add('settings-modal--open');
+            overlay.removeAttribute('aria-hidden');
+            setTimeout(() => document.getElementById('dest-loc')?.focus(), 100);
+          }
+        }
         return;
       }
     });
@@ -269,13 +289,30 @@ const AttendeeView = (() => {
     if (!field || !field.value.trim()) return;
     VenueData.sendCaptainMessage(field.value.trim());
     field.value = '';
+    
+    // Immediate user bubble render
     setTimeout(() => {
       const chatEl = document.getElementById('vf-chat');
       if (chatEl) { chatEl.innerHTML = renderCaptainChat(VenueData.getSnapshot()); chatEl.scrollTop = chatEl.scrollHeight; }
     }, 100);
+
+    // Captain's AI response logic execution
     setTimeout(() => {
+      const data = VenueData.getSnapshot();
       const chatEl = document.getElementById('vf-chat');
-      if (chatEl) { chatEl.innerHTML = renderCaptainChat(VenueData.getSnapshot()); chatEl.scrollTop = chatEl.scrollHeight; }
+      if (chatEl) { chatEl.innerHTML = renderCaptainChat(data); chatEl.scrollTop = chatEl.scrollHeight; }
+
+      const lastMsg = data.captainChat[data.captainChat.length - 1];
+      if (lastMsg && lastMsg.role === 'captain' && lastMsg.action) {
+        if (lastMsg.action === 'food' || lastMsg.action === 'queues') switchPanel('queues');
+        else if (lastMsg.action === 'emergency' || lastMsg.action === 'navigation') switchPanel('navigation');
+        
+        if (lastMsg.destId) {
+          activeRoute = VenueData.findFastestRoute('user-seat', lastMsg.destId);
+          selectedWayfindingDest = lastMsg.destId;
+          if (lastMsg.action) refreshPanel('navigation');
+        }
+      }
     }, 800);
   }
 
@@ -354,7 +391,7 @@ const AttendeeView = (() => {
   function renderSmartDecisions(data) {
     const sd = data.smartDecisions;
     return Object.values(sd).map(d => `
-      <div class="sde-card sde-card--${d.color}">
+      <div class="sde-card sde-card--${d.color}" data-qa="${d.action}" data-dest-id="${d.destId}">
         <div class="sde-card__label"><span class="sde-card__dot sde-card__dot--${d.color}"></span>${d.label}</div>
         <div class="sde-card__name">${d.icon} ${d.name}</div>
         <div class="sde-card__detail">📍 ${d.detail}</div>

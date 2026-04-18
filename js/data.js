@@ -1,5 +1,5 @@
 /* ============================================================
-   VenueFlow — Simulated Real-Time Venue Data Engine
+   Insight-X — Simulated Real-Time Venue Data Engine
    ============================================================ */
 
 const VenueData = (() => {
@@ -26,12 +26,12 @@ const VenueData = (() => {
   const zones = [
     { id: 'north-stand', name: 'North Stand', type: 'seating', capacity: 15000, occupancy: 0.92, x: 0.5, y: 0.12, w: 0.6, h: 0.12 },
     { id: 'south-stand', name: 'South Stand', type: 'seating', capacity: 15000, occupancy: 0.88, x: 0.5, y: 0.88, w: 0.6, h: 0.12 },
-    { id: 'east-stand', name: 'East Stand', type: 'seating', capacity: 12000, occupancy: 0.95, x: 0.88, y: 0.5, w: 0.12, h: 0.5 },
-    { id: 'west-stand', name: 'West Stand', type: 'seating', capacity: 12000, occupancy: 0.90, x: 0.12, y: 0.5, w: 0.12, h: 0.5 },
-    { id: 'north-concourse', name: 'North Concourse', type: 'concourse', capacity: 4000, occupancy: 0.35, x: 0.5, y: 0.03, w: 0.7, h: 0.06 },
-    { id: 'south-concourse', name: 'South Concourse', type: 'concourse', capacity: 4000, occupancy: 0.40, x: 0.5, y: 0.97, w: 0.7, h: 0.06 },
-    { id: 'east-concourse', name: 'East Concourse', type: 'concourse', capacity: 3000, occupancy: 0.30, x: 0.97, y: 0.5, w: 0.06, h: 0.6 },
-    { id: 'west-concourse', name: 'West Concourse', type: 'concourse', capacity: 3000, occupancy: 0.45, x: 0.03, y: 0.5, w: 0.06, h: 0.6 },
+    { id: 'east-stand', name: 'East Stand', type: 'seating', capacity: 12000, occupancy: 0.95, x: 0.82, y: 0.5, w: 0.12, h: 0.5 },
+    { id: 'west-stand', name: 'West Stand', type: 'seating', capacity: 12000, occupancy: 0.90, x: 0.18, y: 0.5, w: 0.12, h: 0.5 },
+    { id: 'north-concourse', name: 'North Conc.', type: 'concourse', capacity: 4000, occupancy: 0.35, x: 0.5, y: 0.03, w: 0.7, h: 0.06 },
+    { id: 'south-concourse', name: 'South Conc.', type: 'concourse', capacity: 4000, occupancy: 0.40, x: 0.5, y: 0.97, w: 0.7, h: 0.06 },
+    { id: 'east-concourse', name: 'East Conc.', type: 'concourse', capacity: 3000, occupancy: 0.30, x: 0.96, y: 0.5, w: 0.06, h: 0.6 },
+    { id: 'west-concourse', name: 'West Conc.', type: 'concourse', capacity: 3000, occupancy: 0.45, x: 0.04, y: 0.5, w: 0.06, h: 0.6 },
     { id: 'gate-a', name: 'Gate A (North)', type: 'gate', capacity: 800, occupancy: 0.20, x: 0.35, y: 0.02, w: 0.05, h: 0.04 },
     { id: 'gate-b', name: 'Gate B (East)', type: 'gate', capacity: 800, occupancy: 0.15, x: 0.98, y: 0.35, w: 0.04, h: 0.05 },
     { id: 'gate-c', name: 'Gate C (South)', type: 'gate', capacity: 800, occupancy: 0.18, x: 0.65, y: 0.98, w: 0.05, h: 0.04 },
@@ -351,10 +351,10 @@ const VenueData = (() => {
       'south-conc':     { x: 0.50, y: 0.97, label: 'South Concourse', icon: '🚶', type: 'concourse' },
       'east-conc':      { x: 0.97, y: 0.50, label: 'East Concourse', icon: '🚶', type: 'concourse' },
       'west-conc':      { x: 0.03, y: 0.50, label: 'West Concourse', icon: '🚶', type: 'concourse' },
-      'ne-junction':    { x: 0.80, y: 0.15, label: 'NE Junction', icon: '↗️', type: 'junction' },
-      'nw-junction':    { x: 0.20, y: 0.15, label: 'NW Junction', icon: '↖️', type: 'junction' },
-      'se-junction':    { x: 0.80, y: 0.85, label: 'SE Junction', icon: '↘️', type: 'junction' },
-      'sw-junction':    { x: 0.20, y: 0.85, label: 'SW Junction', icon: '↙️', type: 'junction' },
+      'ne-junction':    { x: 0.85, y: 0.15, label: 'NE Junction', icon: '↗️', type: 'junction' },
+      'nw-junction':    { x: 0.15, y: 0.15, label: 'NW Junction', icon: '↖️', type: 'junction' },
+      'se-junction':    { x: 0.85, y: 0.85, label: 'SE Junction', icon: '↘️', type: 'junction' },
+      'sw-junction':    { x: 0.15, y: 0.85, label: 'SW Junction', icon: '↙️', type: 'junction' },
       'gate-a-node':    { x: 0.35, y: 0.02, label: 'Gate A (North)', icon: '🚪', type: 'gate' },
       'gate-b-node':    { x: 0.98, y: 0.35, label: 'Gate B (East)', icon: '🚪', type: 'gate' },
       'gate-c-node':    { x: 0.65, y: 0.98, label: 'Gate C (South)', icon: '🚪', type: 'gate' },
@@ -1002,49 +1002,87 @@ const VenueData = (() => {
   // =====================================================
 
   function getSmartDecisions() {
-    const bestEntry = zones.filter(z => z.type === 'gate').sort((a, b) => a.occupancy - b.occupancy)[0];
+    const assignedGateId = digitalTicket.gate.toLowerCase().replace(' ', '-');
+    const bestEntry = zones.find(z => z.id === assignedGateId) || zones.filter(z => z.type === 'gate')[0];
     const bestExit = zones.filter(z => z.type === 'gate').sort((a, b) => a.occupancy - b.occupancy)[0];
     const bestFood = concessions.filter(c => c.type === 'food').sort((a, b) => a.waitTime - b.waitTime)[0];
     const bestDrink = concessions.filter(c => c.type === 'drink').sort((a, b) => a.waitTime - b.waitTime)[0];
 
-    const entryRouteInfo = findFastestRoute('user-seat', bestEntry.id);
-    const exitRouteInfo = findFastestRoute('user-seat', bestExit.id);
+    const entryRouteInfo = findFastestRoute('user-seat', bestEntry.id + '-node');
+    const exitRouteInfo = findFastestRoute('user-seat', bestExit.id + '-node');
+
+    // Dynamic Best Transport Calculation
+    let bestTransportScore = Infinity;
+    let selectedTransport = transportOptions[0];
+    let transportRouteDetails = null;
+
+    transportOptions.forEach(opt => {
+      const gateNodeMap = {
+        'Gate A': 'gate-a-node',
+        'Gate B': 'gate-b-node',
+        'Gate C': 'gate-c-node',
+        'Gate D': 'gate-d-node'
+      };
+      const nodeId = gateNodeMap[opt.gate];
+      if (nodeId) {
+        const route = findFastestRoute('user-seat', nodeId);
+        if (route) {
+          // Score = (walking minutes * 1.5) + waiting minutes
+          const score = (route.totalWalkMin * 1.5) + opt.waitTime;
+          if (score < bestTransportScore) {
+            bestTransportScore = score;
+            selectedTransport = opt;
+            transportRouteDetails = route;
+          }
+        }
+      }
+    });
 
     return {
       bestEntry: {
+        action: 'entry',
         label: 'Best Entry',
         name: bestEntry.name,
-        icon: '🚪',
-        detail: `Recommended · Lowest crowd load${entryRouteInfo ? `, saves ${entryRouteInfo.totalWalkMin} min` : ''}`,
+        icon: '🎫',
+        detail: `Official assigned gate from your digital ticket`,
         color: 'green',
+        destId: bestEntry.id + '-node',
       },
       bestExit: {
+        action: 'emergency',
         label: 'Best Exit',
         name: bestExit.name,
         icon: '🚶',
         detail: `Clearest egress route away from density surge`,
         color: 'blue',
+        destId: bestExit.id + '-node',
       },
       bestFood: {
+        action: 'food',
         label: 'Best Food',
         name: bestFood ? bestFood.name : 'N/A',
         icon: bestFood ? bestFood.icon : '🍔',
         detail: `Shortest wait time (${bestFood ? bestFood.waitTime : '?'}m)`,
         color: 'amber',
+        destId: bestFood ? bestFood.id + '-node' : null,
       },
       bestTransport: {
+        action: 'home',
         label: 'Best Transport',
-        name: transportOptions[0].name,
-        icon: transportOptions[0].icon,
-        detail: `${transportOptions[0].frequency} · ${transportOptions[0].waitTime} min wait`,
+        name: selectedTransport.name,
+        icon: selectedTransport.icon,
+        detail: `${transportRouteDetails ? transportRouteDetails.totalWalkMin + ' min walk' : selectedTransport.distance} · ${selectedTransport.waitTime}m wait`,
         color: 'purple',
+        destId: null,
       },
       precisionRoute: {
+        action: 'emergency',
         label: 'Precision Route',
         name: 'Start Navigation',
         icon: '🧭',
         detail: 'Custom point-to-point routing with turn-by-turn',
         color: 'cyan',
+        destId: null,
       },
     };
   }
@@ -1086,29 +1124,29 @@ const VenueData = (() => {
   const captainResponses = {
     'food': () => {
       const best = concessions.filter(c => c.type === 'food').sort((a, b) => a.waitTime - b.waitTime)[0];
-      return `🍔 Best food option: ${best.name} with only ${best.waitTime} min wait at ${best.zone.replace(/-/g, ' ')}. Routing you there now.`;
+      return { text: `🍔 Best food option: ${best.name} with only ${best.waitTime} min wait at ${best.zone.replace(/-/g, ' ')}. Routing you there now.`, action: 'food', destId: best.id };
     },
     'restroom': () => {
       const best = restrooms.sort((a, b) => a.waitTime - b.waitTime)[0];
-      return `🚻 Nearest restroom: ${best.name} with ${best.waitTime} min wait. ${best.totalStalls - best.occupiedStalls} stalls free.`;
+      return { text: `🚻 Nearest restroom: ${best.name} with ${best.waitTime} min wait. ${best.totalStalls - best.occupiedStalls} stalls free.`, action: 'queues', destId: best.id };
     },
     'exit': () => {
       const best = zones.filter(z => z.type === 'gate').sort((a, b) => a.occupancy - b.occupancy)[0];
-      return `🚪 Clearest exit: ${best.name} at ${Math.round(best.occupancy * 100)}% capacity. Route optimized for minimal crowd contact.`;
+      return { text: `🚪 Clearest exit: ${best.name} at ${Math.round(best.occupancy * 100)}% capacity. Route optimized for minimal crowd contact.`, action: 'emergency', destId: best.id };
     },
     'friend': () => {
       const ar = getAROverlayData();
       const closest = ar.friends.sort((a, b) => a.distance - b.distance)[0];
-      return `📍 ${closest.emoji} ${closest.name} is ${closest.distance}m away at ${closest.section}, ${closest.seat}. Status: ${closest.status}.`;
+      return { text: `📍 ${closest.emoji} ${closest.name} is ${closest.distance}m away at ${closest.section}, ${closest.seat}. Status: ${closest.status}.`, action: null, destId: null };
     },
-    'route': () => `🧭 Confirmed. Routing you to the nearest exit. Directions will update on the map.`,
+    'route': () => ({ text: `🧭 Confirmed. Routing you to the nearest exit. Directions will update on the map.`, action: 'emergency', destId: 'gate-f-node' }),
     'default': () => {
       const tips = [
         `📊 Current venue load: ${Math.round(match.attendance / match.capacity * 100)}%. Concourses are ${zones.find(z => z.id === 'north-concourse').occupancy > 0.5 ? 'busy' : 'clear'}.`,
         `⏱️ Average wait time across all food stands: ${Math.round(concessions.filter(c => c.type === 'food').reduce((s, c) => s + c.waitTime, 0) / concessions.filter(c => c.type === 'food').length)} min.`,
         `🎫 Your exit wave is Wave 1 — Priority. Depart at the final whistle via ${userExitAssignment.gate}.`,
       ];
-      return tips[Math.floor(Math.random() * tips.length)];
+      return { text: tips[Math.floor(Math.random() * tips.length)], action: null, destId: null };
     },
   };
 
@@ -1124,7 +1162,7 @@ const VenueData = (() => {
     else response = captainResponses.default();
 
     setTimeout(() => {
-      captainChatHistory.push({ role: 'captain', text: response, time: Date.now() });
+      captainChatHistory.push({ role: 'captain', ...response, time: Date.now() });
       emit();
     }, 600);
 
@@ -1293,7 +1331,7 @@ const VenueData = (() => {
     }
 
     emit();
-    console.log('[VenueFlow] Applied real match data:', apiMatch.homeTeam, 'vs', apiMatch.awayTeam);
+    console.log('[Insight-X] Applied real match data:', apiMatch.homeTeam, 'vs', apiMatch.awayTeam);
   }
 
   // Apply real weather from OpenWeatherMap
@@ -1310,7 +1348,7 @@ const VenueData = (() => {
     if (apiWeather.description) match.weather.description = apiWeather.description;
 
     emit();
-    console.log('[VenueFlow] Applied real weather data:', apiWeather.temp + '°C', apiWeather.condition);
+    console.log('[Insight-X] Applied real weather data:', apiWeather.temp + '°C', apiWeather.condition);
   }
 
   // Apply real crowd data from IoT sensors
@@ -1349,7 +1387,7 @@ const VenueData = (() => {
     }
 
     emit();
-    console.log('[VenueFlow] Applied real crowd sensor data');
+    console.log('[Insight-X] Applied real crowd sensor data');
   }
 
   return {

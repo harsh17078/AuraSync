@@ -1,5 +1,5 @@
 /* ============================================================
-   VenueFlow — Operations Dashboard Controller
+   Insight-X — Operations Dashboard Controller
    ============================================================ */
 
 const DashboardView = (() => {
@@ -197,7 +197,7 @@ const DashboardView = (() => {
     return `
       <div class="dash-header">
         <div class="dash-header__title">
-          <span class="text-gradient-blue">⚡</span> VenueFlow Command Center
+          <span class="text-gradient-blue">⚡</span> Insight-X Command Center
         </div>
         <div class="dash-header__match">
           <span class="dash-header__match-teams">${m.homeTeam} vs ${m.awayTeam}</span>
@@ -282,11 +282,11 @@ const DashboardView = (() => {
           <div class="incident-item__desc">${inc.desc}</div>
           ${inc.status === 'active' ? `
             <div class="incident-item__actions">
-              <button class="btn btn-sm btn-primary">Acknowledge</button>
-              <button class="btn btn-sm btn-secondary">Deploy Staff</button>
+              <button class="btn btn-sm btn-primary" aria-label="Acknowledge incident">Acknowledge</button>
+              <button class="btn btn-sm btn-secondary" aria-label="Deploy staff to incident location">Deploy Staff</button>
             </div>
           ` : `
-            <span class="badge badge--green" style="margin-top:6px">Resolved</span>
+            <span class="badge badge--green" style="margin-top:6px" aria-label="Incident resolved">Resolved</span>
           `}
         </div>
       </div>
@@ -389,18 +389,18 @@ const DashboardView = (() => {
                 <span class="zone-card__name">🚪 ${gateName}</span>
                 <span class="badge badge--${statusColor}" style="font-size:8px">${gt.status}</span>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;margin:8px 0">
-                <div>
-                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-${statusColor})">${gt.waitMin}</div>
-                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase">Wait</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;margin:8px 0" aria-label="Throughput Statistics">
+                <div title="Current gate wait time">
+                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-${statusColor})" aria-label="Wait Time: ${gt.waitMin} minutes">${gt.waitMin}</div>
+                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase" aria-hidden="true">Wait</div>
                 </div>
-                <div>
-                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-text-primary)">${gt.queueLength}</div>
-                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase">Queue</div>
+                <div title="Current number of people in queue">
+                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-text-primary)" aria-label="Queue Length: ${gt.queueLength} people">${gt.queueLength}</div>
+                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase" aria-hidden="true">Queue</div>
                 </div>
-                <div>
-                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-text-primary)">${gt.throughput}</div>
-                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase">PPL/min</div>
+                <div title="People processing rate per minute">
+                  <div style="font-family:var(--font-heading);font-size:var(--text-lg);font-weight:800;color:var(--color-text-primary)" aria-label="Throughput: ${gt.throughput} people per minute">${gt.throughput}</div>
+                  <div style="font-size:8px;color:var(--color-text-muted);text-transform:uppercase" aria-hidden="true">PPL/min</div>
                 </div>
               </div>
               <div class="progress-bar">

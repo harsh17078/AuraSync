@@ -1,5 +1,5 @@
 /* ============================================================
-   VenueFlow — Canvas-based Stadium Heatmap Renderer
+   Insight-X — Canvas-based Stadium Heatmap Renderer
    ============================================================ */
 
 const HeatmapRenderer = (() => {
