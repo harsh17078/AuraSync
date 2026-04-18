@@ -1,4 +1,4 @@
-# VenueFlow — Smart Venue Experience Platform
+# Insight-X — Smart Venue Experience Platform
 
 ⚡ A real-time, dual-interface web application that transforms the large-scale sporting venue experience through crowd intelligence, virtual queuing, predictive wayfinding, augmented reality, and smart automation.
 
